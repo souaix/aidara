@@ -1,0 +1,44 @@
+﻿@* 找專家：左選單 + 右圖磚 (Ajax 切換) *@
+<section class="py-4">
+    <div class="container">
+        <div class="d-flex align-items-center mb-3">
+            <img src="~/images/icon-expert.svg" alt="" style="width:40px;height:40px" class="me-2">
+            <div>
+                <h2 class="h3 fw-bold mb-0">找專家</h2>
+                <div class="text-muted small">快速比較專家，立即洽談服務細節</div>
+            </div>
+            <div class="ms-auto">
+                <a class="text-decoration-none" asp-controller="Browse" asp-action="Index">更多服務 &gt;</a>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- 左側分類清單 -->
+            <aside class="col-12 col-md-3 mb-4 mb-md-0">
+                <ul class="list-unstyled find-list" id="find-cat-list">
+                    <li><a class="find-link active" href="#" data-cat="interior">室內裝潢</a></li>
+                    <li><a class="find-link" href="#" data-cat="cleaning">清潔服務</a></li>
+                    <li><a class="find-link" href="#" data-cat="design">設計視覺</a></li>
+                    <li><a class="find-link" href="#" data-cat="wedding">婚禮服務</a></li>
+                    <li><a class="find-link" href="#" data-cat="tutor">家教補習</a></li>
+                    <li><a class="find-link" href="#" data-cat="repair">居家維修</a></li>
+                    <li><a class="find-link" href="#" data-cat="photo">攝影錄影</a></li>
+                    <li><a class="find-link" href="#" data-cat="fitness">健康健身</a></li>
+                    <li><a class="find-link" href="#" data-cat="marketing">行銷企劃</a></li>
+                    <li><a class="find-link" href="#" data-cat="writing">編輯寫作</a></li>
+                </ul>
+            </aside>
+
+            <!-- 右側圖磚容器：初次載入就放 interior -->
+            <div class="col-12 col-md-9">
+                <div id="tiles-container">
+                    @await Html.PartialAsync("~/Views/Shared/Partials/_CategoryTiles.cshtml",
+                             new Frontend.Web.Controllers.BrowseController.CategoryTilesVm("interior",
+                             Enumerable.Range(1, 8).Select(i => $"~/images/experts/interior/{i:D2}.jpg").ToArray()))
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</section>

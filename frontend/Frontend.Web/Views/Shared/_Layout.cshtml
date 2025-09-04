@@ -1,0 +1,32 @@
+﻿@*
+  全站框架：Bootstrap + 可插入的 Partial
+*@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - Servara</title>
+
+
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    @* <link rel="stylesheet" href="~/css/site.css" /> *@
+    <link rel="stylesheet" href="~/css/home.css" />
+
+    @RenderSection("styles", required: false)
+</head>
+<body class="d-flex flex-column min-vh-100 pt-navbar">
+
+
+    @Html.Partial("~/Views/Shared/Partials/_Header.cshtml")
+
+    <main role="main">
+        @RenderBody()
+    </main>
+
+    @Html.Partial("~/Views/Shared/Partials/_Footer.cshtml")
+
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    @RenderSection("scripts", required: false)
+</body>
+</html>

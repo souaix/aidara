@@ -1,0 +1,61 @@
+﻿<header>
+    <nav class="navbar navbar-expand-lg bg-white shadow-sm fixed-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/">Servara</a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div id="mainNav" class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">首頁</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-controller="Map" asp-action="Index">地圖找案件</a></li>
+                </ul>
+                <div class="d-flex gap-2">
+                    <!-- 改成開啟 Modal，而不是導頁 -->
+                    <button class="btn btn-outline-secondary" type="button"
+                            data-bs-toggle="modal" data-bs-target="#loginModal">
+                        登入
+                    </button>
+                    <a class="btn btn-primary" asp-controller="Pros" asp-action="Apply">成為達人</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<!-- Login Modal -->
+<div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">登入或註冊</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <p class="text-muted small mb-3">選擇你要使用的方式：</p>
+
+                <div class="d-grid gap-2">
+                    <!-- Google 登入 -->
+                    <a class="btn btn-outline-danger"
+                       href="@Url.Action("Google", "Account", new { mode = "login", returnUrl = Context.Request.Path })">
+                        使用 Google 帳號登入
+                    </a>
+
+                    <!-- Google 註冊（可用同一支 OAuth，差別在 mode） -->
+                    <a class="btn btn-danger"
+                       href="@Url.Action("Google", "Account", new { mode = "register", returnUrl = Context.Request.Path })">
+                        使用 Google 帳號註冊
+                    </a>
+                </div>
+            </div>
+
+            <div class="modal-footer justify-content-between">
+                <span class="text-muted small">登入/註冊即表示你同意本站的服務條款與隱私權政策</span>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,39 @@
+﻿@{
+    ViewData["Title"] = "地圖檢索";
+    Layout = "_Layout";
+}
+
+<h2>地圖檢索</h2>
+
+<div class="filters">
+    <label>
+        單價：
+        <input type="number" id="minUnit" placeholder="最低" />
+        <span>-</span>
+        <input type="number" id="maxUnit" placeholder="最高" />
+    </label>
+
+    <label>
+        房數：
+        <input type="number" id="minRooms" placeholder="最少" />
+        <span>-</span>
+        <input type="number" id="maxRooms" placeholder="最多" />
+    </label>
+
+    <button id="btnSearch">搜尋</button>
+
+    <button id="btnSearch">搜尋</button>
+    <div id="totalBadge" style="margin-left:auto;font-weight:600;">共 0 筆</div>
+</div>
+
+<div id="map"></div>
+
+@section Scripts {
+    <link rel="stylesheet" href="~/lib/leaflet/leaflet.css" />
+    <link rel="stylesheet" href="~/lib/leaflet.markercluster/MarkerCluster.css" />
+    <link rel="stylesheet" href="~/lib/leaflet.markercluster/MarkerCluster.Default.css" />
+
+    <script src="~/lib/leaflet/leaflet.js"></script>
+    <script src="~/lib/leaflet.markercluster/leaflet.markercluster.js"></script>
+    <script src="~/js/map.js"></script>
+}

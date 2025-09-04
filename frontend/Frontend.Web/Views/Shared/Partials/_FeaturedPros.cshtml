@@ -1,0 +1,27 @@
+﻿<section class="py-5">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h3 fw-bold m-0">精選達人</h2>
+            <a class="btn btn-outline-secondary btn-sm" href="/Map">看更多</a>
+        </div>
+
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4">
+            @for (int i = 0; i < 4; i++)
+            {
+                <div class="col">
+                    <div class="card h-100">
+                        <img src="~/images/pro@(i + 1).jpg" class="card-img-top" alt="達人照片">
+                        <div class="card-body">
+                            <h5 class="card-title">達人 @(i + 1)</h5>
+                            <p class="card-text text-muted">4.9 ★ | 已完成 120 件</p>
+                            <p class="card-text small">擅長：居家清潔、空間整理、到府打蠟</p>
+                        </div>
+                        <div class="card-footer bg-white">
+                            <a href="/Map" class="btn btn-outline-primary w-100">查看案件</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>

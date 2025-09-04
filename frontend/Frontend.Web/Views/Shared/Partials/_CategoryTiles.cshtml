@@ -1,0 +1,25 @@
+﻿@model Frontend.Web.Controllers.BrowseController.CategoryTilesVm
+
+@if (Model.Pics.Count == 0)
+{
+    <div class="alert alert-light border d-flex align-items-center" role="alert">
+        <div class="me-2">😅</div>
+        <div>「@Model.Cat」分類的圖片還在準備中，稍後上架。</div>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @for (int i = 0; i < Model.Pics.Count; i++)
+        {
+            <div class="col-12 col-sm-6 col-lg-3">
+                <a class="card card-tile text-white text-decoration-none" href="#">
+                    <div class="ratio ratio-16x9">
+                        <img src="@Url.Content(Model.Pics[i])" class="object-fit-cover rounded" alt="@Model.Cat @(i+1)" />
+                    </div>
+                    <div class="tile-caption"><span>@Model.Cat @(i + 1)</span></div>
+                </a>
+            </div>
+        }
+    </div>
+}

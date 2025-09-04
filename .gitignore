@@ -1,0 +1,71 @@
+# =========================
+# Visual Studio / .NET
+# =========================
+.vs/
+backend/Api/obj/
+backend/Application/obj/
+backend/Domain/obj/
+backend/Infrastructure/obj/
+frontend/Frontend.Web/obj/
+
+*.user
+*.suo
+*.cache
+*.db-shm
+*.db-wal
+*.db
+*.pdb
+*.opendb
+*.VC.db
+*.aps
+*.ncb
+*.sdf
+*.sqlite
+*.log
+
+# Build results
+bin/
+obj/
+[Bb]uild/
+[Ll]og/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+*.exe
+*.dll
+
+# Test results
+TestResults/
+*.trx
+
+# =========================
+# Node.js / 前端
+# =========================
+node_modules/
+dist/
+build/
+.out/
+.next/
+coverage/
+
+# npm / yarn / pnpm logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# 環境設定 / 秘密檔案
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# 作業系統雜項
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini

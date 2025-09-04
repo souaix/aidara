@@ -1,0 +1,22 @@
+﻿<section class="py-5">
+    <div class="container">
+        <h2 class="section-title">熱門分類</h2>
+
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-3">
+            @{
+                var cats = new[] { "居家清潔", "水電維修", "裝潢木作", "設計視覺", "婚攝攝影", "家教補習" };
+                foreach (var c in cats)
+                {
+                    <div class="col">
+                        <a class="card h-100 text-decoration-none link-dark" href="/Map?cat=@c">
+                            <div class="card-body text-center">
+                                <div class="display-6">🧩</div>
+                                <div class="mt-2 fw-semibold">@c</div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</section>
