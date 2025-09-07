@@ -27,6 +27,12 @@ builder.Services
         // 不設定 CallbackPath，使用預設 /signin-google
     });
 
+builder.Services.AddHttpClient("BackendApi", (sp, client) =>
+{
+    var cfg = sp.GetRequiredService<IConfiguration>();
+    client.BaseAddress = new Uri(cfg["BackendApi:BaseUrl"]!);
+});
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())

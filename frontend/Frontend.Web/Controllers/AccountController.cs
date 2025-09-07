@@ -1,14 +1,27 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using Frontend.Web.Models;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 
 namespace Frontend.Web.Controllers;
 
 public class AccountController : Controller
 {
+    private readonly IHttpClientFactory _httpClientFactory;
+    private static readonly JsonSerializerOptions _jsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+    };
+
+    public AccountController(IHttpClientFactory httpClientFactory)
+    => _httpClientFactory = httpClientFactory;
+
     // 1) 入口：導去 Google
     [HttpGet]
     public IActionResult Google(string mode = "login", string returnUrl = "/")
@@ -23,51 +36,55 @@ public class AccountController : Controller
     [HttpGet]
     public async Task<IActionResult> GoogleCallback(string mode = "login", string returnUrl = "/")
     {
-        var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        if (!result.Succeeded)
+        // 1) 從 Google Claims 取資料
+        var email = User.FindFirstValue(ClaimTypes.Email);
+        var name = User.Identity?.Name ?? email ?? "User";
+        var avatar = User.Claims.FirstOrDefault(c => c.Type == "urn:google:picture")?.Value
+                  ?? User.Claims.FirstOrDefault(c => c.Type == "picture")?.Value;
+
+        if (string.IsNullOrWhiteSpace(email))
+            return LocalRedirect("/");
+
+        // 2) 呼叫 Backend.Api 確認/建立使用者
+        var client = _httpClientFactory.CreateClient("BackendApi");
+        var payload = new GoogleEnsurePayload(
+            Email: email,
+            DisplayName: name,
+            AvatarUrl: avatar,
+            Mode: mode.Equals("register", StringComparison.OrdinalIgnoreCase) ? AuthMode.Register : AuthMode.Login
+        );
+
+        using var content = new StringContent(JsonSerializer.Serialize(payload, _jsonOpts), Encoding.UTF8, "application/json");
+        var resp = await client.PostAsync("/api/auth/google/ensure", content);
+
+        //if (!resp.IsSuccessStatusCode)
+        //{
+        //    var body = await resp.Content.ReadAsStringAsync();
+        //    // 先暫時用 200 顯示錯誤內容（或改成你愛的 logging）
+        //    return Content($"Backend 400/500：{resp.StatusCode}\n{body}", "text/plain", Encoding.UTF8);
+        //}
+
+
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            // 有些情況 Cookie 尚未建立，用 HttpContext.AuthenticateAsync() 讀不到，
-            // 實務上可直接從 HttpContext.User 取得 External 登入資料：
+            // login 模式但後端查無帳號（且不自動註冊）
+            return LocalRedirect("/");
         }
 
-        // 從外部身分取使用者資訊
-        var principal = HttpContext.User;
-        var email = principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        var name = principal.Identity?.Name ?? email ?? "User";
+        resp.EnsureSuccessStatusCode();
+        var json = await resp.Content.ReadAsStringAsync();
+        var user = JsonSerializer.Deserialize<UserDto>(json, _jsonOpts);
+        if (user is null) return LocalRedirect("/");
 
-        if (string.IsNullOrEmpty(email))
-            return Redirect("/"); // 取不到 email，作保守處理
-
-        // TODO: 查 DB 是否已有該 email
-        var exists = false; // 假設查詢結果
-
-        if (mode.Equals("register", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!exists)
-            {
-                // TODO: 建立新帳號（寫入 DB）
-                exists = true;
-            }
-            // 若已存在也當登入處理
-        }
-        else // login
-        {
-            if (!exists)
-            {
-                // 依你的需求：可以導到註冊提示頁，或自動建立
-                // 這裡示範直接導回 Modal，顯示訊息（可自訂）
-                return Redirect("/");
-            }
-        }
-
-        // 3) 建立本地登入 Cookie（用你系統的 UserId/Role…）
+        // 3) 簽站內 Cookie（用後端回來的 UserDto）
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, name),
-            new Claim(ClaimTypes.Email, email),
-            // new Claim(ClaimTypes.NameIdentifier, userId), // 之後接 DB 可加
-            // new Claim(ClaimTypes.Role, "User"),
+            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Name, user.DisplayName ?? user.Email)
         };
+        if (!string.IsNullOrEmpty(user.AvatarUrl))
+            claims.Add(new Claim("avatar_url", user.AvatarUrl));
 
         var id = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         await HttpContext.SignInAsync(
