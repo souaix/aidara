@@ -98,10 +98,12 @@ public class AccountController : Controller
     [Authorize]
     public async Task<IActionResult> Logout(string returnUrl = "/")
     {
+        // 登出本站（Cookie）
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return LocalRedirect(returnUrl);
+        return LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
     }
 
     // 若你還保留舊的「帳密登入」頁，可用這個 action 導頁
-    public IActionResult Login() => Redirect("/");
+    public IActionResult Login() => Redirect("/?auth=1");
+
 }

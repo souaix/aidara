@@ -26,4 +26,6 @@ public sealed class UnitOfWork : IUnitOfWork
     }
 
     public IUserRepo CreateUserRepo() => new UserRepo(_conn!, _tx);
+
+    public IWalletRepo CreateWalletRepo() => new WalletRepo(_conn!, _tx);
 }
