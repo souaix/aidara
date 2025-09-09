@@ -18,15 +18,22 @@ public class AuthController : ControllerBase
         _userRepoFactory = userRepoFactory;
     }
 
-    [HttpPost("google/ensure")]
-    public async Task<ActionResult<UserDto>> EnsureGoogle([FromBody] GooglePayload p, CancellationToken ct)
-    {
-        var dto = await _auth.EnsureUserForGoogleAsync(
-            p.Email, p.DisplayName, p.AvatarUrl, p.Mode, _userRepoFactory, ct);
+	[HttpPost("google/auto")]
+	public async Task<ActionResult<UserDto>> EnsureGoogleAuto([FromBody] GooglePayload p, CancellationToken ct)
+	{
+		try
+		{
+			var dto = await _auth.EnsureUserForGoogleAutoAsync(
+				p.Email, p.DisplayName, p.AvatarUrl, _userRepoFactory, ct);
 
-        if (dto is null) return NotFound(new { message = "User not found in login mode." });
-        return Ok(dto);
-    }
+			return Ok(dto);
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"🔥 AutoEnsure failed: {ex.Message}");
+			return StatusCode(500, new { message = ex.Message });
+		}
+	}
 
-    public record GooglePayload(string Email, string? DisplayName, string? AvatarUrl, AuthMode Mode);
+	public record GooglePayload(string Email, string? DisplayName, string? AvatarUrl, AuthMode Mode);
 }

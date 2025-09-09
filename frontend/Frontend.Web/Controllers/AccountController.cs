@@ -36,8 +36,17 @@ public class AccountController : Controller
     [HttpGet]
     public async Task<IActionResult> GoogleCallback(string mode = "login", string returnUrl = "/")
     {
-        // 1) 從 Google Claims 取資料
-        var email = User.FindFirstValue(ClaimTypes.Email);
+		await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+		Console.WriteLine("[Claims]");
+		foreach (var c in User.Claims)
+		{
+			Console.WriteLine($"  {c.Type} = {c.Value}");
+		}
+
+
+		// 1) 從 Google Claims 取資料
+		var email = User.FindFirstValue(ClaimTypes.Email);
         var name = User.Identity?.Name ?? email ?? "User";
         var avatar = User.Claims.FirstOrDefault(c => c.Type == "urn:google:picture")?.Value
                   ?? User.Claims.FirstOrDefault(c => c.Type == "picture")?.Value;
@@ -55,14 +64,14 @@ public class AccountController : Controller
         );
 
         using var content = new StringContent(JsonSerializer.Serialize(payload, _jsonOpts), Encoding.UTF8, "application/json");
-        var resp = await client.PostAsync("/api/auth/google/ensure", content);
+        var resp = await client.PostAsync("/api/auth/google/auto", content);
 
-        //if (!resp.IsSuccessStatusCode)
-        //{
-        //    var body = await resp.Content.ReadAsStringAsync();
-        //    // 先暫時用 200 顯示錯誤內容（或改成你愛的 logging）
-        //    return Content($"Backend 400/500：{resp.StatusCode}\n{body}", "text/plain", Encoding.UTF8);
-        //}
+        if (!resp.IsSuccessStatusCode)
+        {
+            var body = await resp.Content.ReadAsStringAsync();
+            // 先暫時用 200 顯示錯誤內容
+            return Content($"Backend 400/500：{resp.StatusCode}\n{body}", "text/plain", Encoding.UTF8);
+        }
 
 
         if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)

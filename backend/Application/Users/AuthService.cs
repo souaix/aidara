@@ -16,16 +16,15 @@ public class AuthService
 	public AuthService(IUnitOfWork uow) => _uow = uow;
 
 	// 簽名不變
-	public async Task<UserDto?> EnsureUserForGoogleAsync(
+	public async Task<UserDto?> EnsureUserForGoogleAutoAsync(
 		string email, string? displayName, string? avatarUrl,
-		AuthMode mode, Func<IUserRepo> repoFactory, CancellationToken ct)
+		Func<IUserRepo> repoFactory, CancellationToken ct)
 	{
 		await _uow.BeginAsync(ct);
 		try
 		{
 			var users = repoFactory();
 
-			// 1) 已存在 → 僅更新最後登入
 			var existing = await users.GetByEmailAsync(email, ct);
 			if (existing is not null)
 			{
@@ -34,39 +33,41 @@ public class AuthService
 				return ToDto(existing);
 			}
 
-			// 2) 不存在且是 Login 模式 → 不建立
-			if (mode == AuthMode.Login)
-			{
-				await _uow.RollbackAsync();
-				return null;
-			}
-
-			// 3) Register 模式 → 建新帳號
+			// ✅ 若不存在就直接建帳號
 			var now = DateTime.UtcNow;
 			var created = await users.InsertAsync(new User
 			{
 				UserId = Guid.NewGuid(),
 				Email = email,
-				DisplayName = displayName,
-				AvatarUrl = avatarUrl,
+				DisplayName = displayName ?? email,
+				AvatarUrl = avatarUrl ?? "",
 				IsActive = true,
 				CreatedAt = now,
 				UpdatedAt = now
 			}, ct);
 
-			// 4) 🎁 新帳號贈點：Silver 99,999（在同一個交易裡）
-			var wallet = _uow.CreateWalletRepo();
-			await wallet.InsertAsync(new CreateLedgerRequest(
-				UserId: created.UserId,
-				Currency: "Silver",
-				Amount: 99999,              // 單位＝點數/分（你現在用 int）
-				TxType: "DEPOSIT",          // 我們已全面用 string，不用 enum
-				OrderId: null,
-				Meta: "{\"reason\":\"signup_bonus\"}",
-				RejectNegative: false        // 純加值，不會變負
-			), ct);
+			// 🎁 送錢包（可選）
+			try
+			{
+				var wallet = _uow.CreateWalletRepo();
+				await wallet.InsertAsync(new CreateLedgerRequest(
+					UserId: created.UserId,
+					Currency: "Silver",
+					Amount: 99999,
+					TxType: "DEPOSIT",
+					OrderId: null,
+					Meta: "{\"reason\":\"signup_bonus\"}",
+					RejectNegative: false
+				), ct);
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"❗Wallet insert failed: {ex.Message}");
+				throw;  // 還是要 rollback
+			}
 
-			// 5) 交易完成
+
+
 			await _uow.CommitAsync(ct);
 			return ToDto(created);
 		}

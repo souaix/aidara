@@ -33,6 +33,7 @@ builder.Services.AddHttpClient("BackendApi", (sp, client) =>
     client.BaseAddress = new Uri(cfg["BackendApi:BaseUrl"]!);
 });
 
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())

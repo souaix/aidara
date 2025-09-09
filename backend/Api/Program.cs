@@ -54,19 +54,27 @@ builder.Services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var allowWeb = "_allowWeb";
-builder.Services.AddCors(opts =>
+
+
+builder.Services.AddCors(options =>
 {
-    opts.AddPolicy(allowWeb, p =>
-        p.WithOrigins("http://localhost:3000", "https://localhost:3000")
-         .AllowAnyHeader()
-         .AllowAnyMethod());
+	options.AddPolicy("AllowFrontendDev", policy =>
+	{
+		policy
+			.WithOrigins("https://localhost:7291")  // 前端網址（你開發用的）
+			.AllowAnyHeader()
+			.AllowAnyMethod()
+			.AllowCredentials();
+	});
 });
+
+
 
 // ========= Pipeline =========
 var app = builder.Build();
 
-app.UseCors(allowWeb);
+app.UseCors("AllowFrontendDev");
+
 
 app.UseSwagger();
 app.UseSwaggerUI();

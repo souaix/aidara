@@ -12,13 +12,16 @@ public sealed class WalletQueryRepo : IWalletQueryRepo
 	public async Task<IEnumerable<BalanceDto>> GetBalancesAsync(Guid userId, string[] currencies, CancellationToken ct)
 	{
 		const string sql = """
-            select "CURRENCY" as "Currency", "BALANCE" as "Balance"
-            from "WALLET_BALANCES"
-            where "USER_ID" = @userId
-              and "CURRENCY" = any(@currs)
-            """;
+        select trim("CURRENCY") as "Currency", "BALANCE" as "Balance"
+        from "WALLET_BALANCES"
+        where "USER_ID" = @userId
+          and trim("CURRENCY") = any(@currs)
+        """;
+
 		await using var conn = await _ds.OpenConnectionAsync(ct);
+
 		return await conn.QueryAsync<BalanceDto>(
 			new CommandDefinition(sql, new { userId, currs = currencies }, cancellationToken: ct));
 	}
+
 }

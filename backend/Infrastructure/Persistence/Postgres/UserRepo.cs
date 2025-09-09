@@ -36,7 +36,8 @@ public sealed class UserRepo : IUserRepo
             limit 1;
             """;
         return await _conn.QueryFirstOrDefaultAsync<User>(new CommandDefinition(sql, new { email }, _tx, cancellationToken: ct));
-    }
+		//return await _conn.QueryFirstOrDefaultAsync<User>(new CommandDefinition(sql, new { email }, cancellationToken: ct));
+	}
 
     public async Task<User> InsertAsync(User user, CancellationToken ct)
     {

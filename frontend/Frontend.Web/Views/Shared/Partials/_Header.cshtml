@@ -16,10 +16,22 @@
 					@if (User.Identity?.IsAuthenticated ?? false)
 					{
 						<!-- 已登入：顯示錢包餘額 + DisplayName + 登出 -->
-						<div id="wallet-badges" class="d-flex gap-2 me-2">
-							<span class="badge bg-warning text-dark" id="bal-gold">Gold: 0</span>
-							<span class="badge bg-secondary" id="bal-silver">Silver: 0</span>
-						</div>
+						@if (User.Identity?.IsAuthenticated ?? false)
+						{
+							<div id="wallet-badges" class="d-flex gap-2 me-2">
+								<span class="badge bg-warning text-dark">Gold: @ViewBag.GoldBalance</span>
+								<span class="badge bg-secondary">Silver: @ViewBag.SilverBalance</span>
+							</div>
+							<span class="navbar-text me-2">
+								@User.Identity.Name
+							</span>
+							<a class="btn btn-outline-secondary" asp-controller="Account" asp-action="Logout" asp-route-returnUrl="@Context.Request.Path">登出</a>
+						}
+						else
+						{
+							<a class="btn btn-outline-secondary" asp-controller="Account" asp-action="Login">登入</a>
+						}
+
 						<span class="navbar-text me-2">
 							@User.Identity.Name
 						</span>
@@ -76,22 +88,8 @@
 		</div>
 	</div>
 </div>
-@section Scripts {
-	<script>
-		(function () {
-			const goldEl = document.getElementById('bal-gold');
-			const silverEl = document.getElementById('bal-silver');
-			if (!goldEl || !silverEl) return;
 
-			fetch('/api/wallet/balances?currencies=Gold,Silver', { credentials: 'include' })
-				.then(r => r.ok ? r.json() : Promise.reject(r))
-				.then(rows => {
-					let gold = rows.find(x => x.currency === 'Gold');
-					let sil  = rows.find(x => x.currency === 'Silver');
-					goldEl.textContent   = `Gold: ${gold ? gold.balance : 0}`;
-					silverEl.textContent = `Silver: ${sil ? sil.balance : 0}`;
-				})
-				.catch(err => console.error('load balances failed', err));
-		})();
-	</script>
+
+
+
 }
