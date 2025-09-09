@@ -1,17 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Orders\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Backend.Contracts\Backend.Contracts.csproj" />
     <ProjectReference Include="..\Domain\Backend.Domain.csproj" />
   </ItemGroup>
 

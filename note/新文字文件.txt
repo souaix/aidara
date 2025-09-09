@@ -1,0 +1,9 @@
+{
+  "userId": "4112fcd4-d9c0-4742-97f1-3c0e6cf2cb16",
+  "currency": "abc",
+  "amount": 10,
+  "txType": "DEPOSIT",
+  "orderId": 0,
+  "meta": "string",
+  "rejectNegative": true
+}

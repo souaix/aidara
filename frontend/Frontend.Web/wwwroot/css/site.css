@@ -100,3 +100,59 @@ footer {
         .filters button:hover {
             background: #004466;
         }
+
+/* Google Sign-In button (light outline variant) */
+/* Google Sign-In button: outline (light) */
+.gsi-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 40px;
+    padding: 10px 16px;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #3c4043;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 1px 1px rgba(0,0,0,.05);
+    transition: background-color .15s ease, box-shadow .15s ease, transform .02s ease;
+}
+
+    .gsi-btn:hover {
+        background-color: #f8f9fa;
+        text-decoration: none;
+        color: #3c4043;
+        box-shadow: 0 1px 2px rgba(0,0,0,.12);
+    }
+
+    .gsi-btn:active {
+        background-color: #f1f3f4;
+        transform: translateY(0.5px);
+        box-shadow: 0 1px 1px rgba(0,0,0,.08) inset, 0 1px 1px rgba(0,0,0,.04);
+    }
+
+    .gsi-btn:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(26,115,232,.25);
+    }
+
+.gsi-icon {
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+}
+
+.gsi-text {
+    white-space: nowrap;
+}
+
+/* 在 .d-grid 容器中讓它置中 */
+.d-grid .gsi-btn {
+    width: 100%;
+}
