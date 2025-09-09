@@ -39,6 +39,8 @@ builder.Services.AddScoped<Func<IUserRepo>>(sp => () =>
 // 應用服務
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<WalletService>();
+builder.Services.AddScoped<IWalletQueryRepo, WalletQueryRepo>();
+
 
 // ========= MVC / JSON / Swagger / CORS =========
 builder.Services

@@ -12,8 +12,8 @@ public sealed class WalletService
 
     public async Task<LedgerDto> CreateLedgerAsync(CreateLedgerRequest req, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(req.Currency) || req.Currency.Length != 3)
-            throw new ArgumentException("Currency must be 3 letters.", nameof(req.Currency));
+        if (string.IsNullOrWhiteSpace(req.Currency))
+            throw new ArgumentException("Currency must be exists.", nameof(req.Currency));
         if (req.Amount == 0) throw new ArgumentException("Amount must be non-zero.", nameof(req.Amount));
 
         await using var uow = _uowFactory();

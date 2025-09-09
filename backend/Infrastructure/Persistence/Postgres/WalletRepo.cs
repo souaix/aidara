@@ -4,7 +4,6 @@ using Backend.Contracts.Wallet;
 using Backend.Domain.Wallet;
 using Dapper;
 using Npgsql;
-
 namespace Backend.Infrastructure.Persistence.Postgres;
 
 public sealed class WalletRepo : IWalletRepo
