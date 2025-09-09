@@ -21,7 +21,7 @@ public class HomeController : Controller
 			if (Guid.TryParse(userId, out var uid))
 			{
 				var client = _http.CreateClient("BackendApi");
-				var url = $"/api/wallet/balances?userId={uid}&currencies=Gold,Silver";
+				var url = $"/api/wallet/balances?userId={uid}&currencies=Gold&currencies=Silver";
 				var resp = await client.GetAsync(url);
 
 				if (resp.IsSuccessStatusCode)
