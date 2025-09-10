@@ -38,12 +38,6 @@ public class AccountController : Controller
     {
 		await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-		Console.WriteLine("[Claims]");
-		foreach (var c in User.Claims)
-		{
-			Console.WriteLine($"  {c.Type} = {c.Value}");
-		}
-
 
 		// 1) 從 Google Claims 取資料
 		var email = User.FindFirstValue(ClaimTypes.Email);
@@ -65,7 +59,7 @@ public class AccountController : Controller
 
         using var content = new StringContent(JsonSerializer.Serialize(payload, _jsonOpts), Encoding.UTF8, "application/json");
         var resp = await client.PostAsync("/api/auth/google/auto", content);
-
+      
         if (!resp.IsSuccessStatusCode)
         {
             var body = await resp.Content.ReadAsStringAsync();
@@ -82,10 +76,13 @@ public class AccountController : Controller
 
         resp.EnsureSuccessStatusCode();
         var json = await resp.Content.ReadAsStringAsync();
-        var user = JsonSerializer.Deserialize<UserDto>(json, _jsonOpts);
-        if (user is null) return LocalRedirect("/");
+        var result = JsonSerializer.Deserialize<EnsureUserResponse>(json, _jsonOpts);
+
+        if (result?.User is null) return LocalRedirect("/");
+
 
         // 3) 簽站內 Cookie（用後端回來的 UserDto）
+        var user = result.User;  // ✅ 補上這一行
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
@@ -100,6 +97,13 @@ public class AccountController : Controller
             CookieAuthenticationDefaults.AuthenticationScheme,
             new ClaimsPrincipal(id),
             new AuthenticationProperties { IsPersistent = true });
+
+
+        if (result.IsNew)
+        {
+            TempData["FlashMessage"] = "🎉 歡迎加入 SamaSama！你獲得了 100 銀幣！";
+            TempData["FlashType"] = "success";
+        }
 
         return LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
     }

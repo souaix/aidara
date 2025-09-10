@@ -13,8 +13,7 @@
 					<li class="nav-item"><a class="nav-link" asp-controller="Map" asp-action="Index">地圖找案件</a></li>
 				</ul>
 				<div class="d-flex gap-2">
-					@if (User.Identity?.IsAuthenticated ?? false)
-					{
+
 						<!-- 已登入：顯示錢包餘額 + DisplayName + 登出 -->
 						@if (User.Identity?.IsAuthenticated ?? false)
 						{
@@ -32,17 +31,7 @@
 							<a class="btn btn-outline-secondary" asp-controller="Account" asp-action="Login">登入</a>
 						}
 
-						<span class="navbar-text me-2">
-							@User.Identity.Name
-						</span>
-						<a class="btn btn-outline-secondary" asp-controller="Account" asp-action="Logout" asp-route-returnUrl="@Context.Request.Path">登出</a>
-					}
 
-					else
-					{
-						<!-- 未登入 -->
-						<a class="btn btn-outline-secondary" asp-controller="Account" asp-action="Login">登入</a>
-					}
 					<a class="btn btn-primary" asp-controller="Pros" asp-action="Apply">成為達人</a>
 				</div>
 

@@ -18,9 +18,18 @@
     @RenderSection("styles", required: false)
 </head>
 <body class="d-flex flex-column min-vh-100 pt-navbar">
+    @* @{
+        // 測試用：強制顯示 flash banner，之後請拿掉這段
+        var fakeFlashMessage = TempData["FlashMessage"] as string ?? "🎉 測試訊息：銀幣發送成功";
+    } *@
 
+@if (TempData["FlashMessage"] is string msg)
+{
+    <partial name="~/Views/Shared/Partials/_FlashBanner.cshtml" model="msg" />
+}
 
     @Html.Partial("~/Views/Shared/Partials/_Header.cshtml")
+    
 
     <main role="main">
         @RenderBody()
@@ -38,10 +47,26 @@
             if (modalEl) new bootstrap.Modal(modalEl).show();
           }
         });
+
+        //flash-banner
+        // setTimeout(() => {
+        //     document.querySelectorAll(".flash-banner")?.forEach(b => b.remove());
+        // }, 5000); 
+        // //5 秒後自動消失
     </script>
 
- 
+
     @* <script src="https://accounts.google.com/gsi/client" async defer></script> *@
+
+    @* @if (TempData["FlashMessage"] is string msg)
+    {
+        var type = TempData["FlashType"] as string ?? "info";
+        <div class="alert alert-@type alert-dismissible fade show flash-banner" role="alert">
+            @msg
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    } *@
+
 
 </body>
 </html>

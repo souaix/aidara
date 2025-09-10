@@ -19,21 +19,21 @@ public class AuthController : ControllerBase
     }
 
 	[HttpPost("google/auto")]
-	public async Task<ActionResult<UserDto>> EnsureGoogleAuto([FromBody] GooglePayload p, CancellationToken ct)
+public async Task<ActionResult<EnsureUserResponse>> EnsureGoogleAuto([FromBody] GooglePayload p, CancellationToken ct)
+{
+	try
 	{
-		try
-		{
-			var dto = await _auth.EnsureUserForGoogleAutoAsync(
-				p.Email, p.DisplayName, p.AvatarUrl, _userRepoFactory, ct);
+		var (userDto, isNew) = await _auth.EnsureUserForGoogleAutoAsync(
+			p.Email, p.DisplayName, p.AvatarUrl, _userRepoFactory, ct);
 
-			return Ok(dto);
-		}
-		catch (Exception ex)
-		{
-			Console.WriteLine($"🔥 AutoEnsure failed: {ex.Message}");
-			return StatusCode(500, new { message = ex.Message });
-		}
+		return Ok(new EnsureUserResponse(userDto, isNew));
 	}
+	catch (Exception ex)
+	{
+		Console.WriteLine($"🔥 AutoEnsure failed: {ex.Message}");
+		return StatusCode(500, new { message = ex.Message });
+	}
+}
 
 	public record GooglePayload(string Email, string? DisplayName, string? AvatarUrl, AuthMode Mode);
 }

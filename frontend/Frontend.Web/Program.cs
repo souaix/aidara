@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
+ï»¿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,7 +24,7 @@ builder.Services
         options.Scope.Add("email");
         options.Scope.Add("profile");
         options.SaveTokens = true;
-        // ¤£³]©w CallbackPath¡A¨Ï¥Î¹w³] /signin-google
+        // ä¸è¨­å®š CallbackPathï¼Œä½¿ç”¨é è¨­ /signin-google
     });
 
 builder.Services.AddHttpClient("BackendApi", (sp, client) =>
@@ -41,6 +41,8 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+
+
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

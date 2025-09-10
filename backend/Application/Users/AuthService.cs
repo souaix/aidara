@@ -1,9 +1,8 @@
 ﻿using Backend.Application.Ports;
 using Backend.Contracts.Users;
-using Backend.Domain.Entities;
-
 // 👇 新增
 using Backend.Contracts.Wallet;  // CreateLedgerRequest
+using Backend.Domain.Entities;
 								 // 若你把 IWalletRepo 放在 Ports：using Backend.Application.Ports;
 
 namespace Backend.Application.Users;
@@ -15,11 +14,11 @@ public class AuthService
 	private readonly IUnitOfWork _uow;
 	public AuthService(IUnitOfWork uow) => _uow = uow;
 
-	// 簽名不變
-	public async Task<UserDto?> EnsureUserForGoogleAutoAsync(
-		string email, string? displayName, string? avatarUrl,
-		Func<IUserRepo> repoFactory, CancellationToken ct)
-	{
+    // 簽名不變
+    public async Task<(UserDto User, bool IsNew)> EnsureUserForGoogleAutoAsync(
+        string email, string? displayName, string? avatarUrl,
+        Func<IUserRepo> repoFactory, CancellationToken ct)
+    {
 		await _uow.BeginAsync(ct);
 		try
 		{
@@ -30,8 +29,8 @@ public class AuthService
 			{
 				await users.TouchLastSeenAsync(existing.UserId, ct);
 				await _uow.CommitAsync(ct);
-				return ToDto(existing);
-			}
+                return (ToDto(existing), false);
+            }
 
 			// ✅ 若不存在就直接建帳號
 			var now = DateTime.UtcNow;
@@ -69,8 +68,8 @@ public class AuthService
 
 
 			await _uow.CommitAsync(ct);
-			return ToDto(created);
-		}
+            return (ToDto(created), true);
+        }
 		catch
 		{
 			await _uow.RollbackAsync();
