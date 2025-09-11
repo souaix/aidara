@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Frontend.Web.Views.Account
 {
-    public class beabossModel : PageModel
+    public class BeABossModel : PageModel
     {
         public void OnGet()
         {

@@ -40,6 +40,8 @@ builder.Services.AddScoped<Func<IUserRepo>>(sp => () =>
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<WalletService>();
 builder.Services.AddScoped<IWalletQueryRepo, WalletQueryRepo>();
+builder.Services.AddScoped<IServiceRepo, ServiceRepo>();
+builder.Services.AddScoped<IUserServiceRepo, UserServiceRepo>();
 
 
 // ========= MVC / JSON / Swagger / CORS =========

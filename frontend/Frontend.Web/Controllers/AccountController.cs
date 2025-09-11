@@ -121,6 +121,6 @@ public class AccountController : Controller
 
 	public IActionResult Beaboss()
 	{
-		return View("beaboss"); // 對應 Views/Account/beaboss.cshtml
+		return View("BeABoss"); // 對應 Views/Account/BeABoss.cshtml
 	}
 }
