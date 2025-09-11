@@ -119,4 +119,8 @@ public class AccountController : Controller
     // 若你還保留舊的「帳密登入」頁，可用這個 action 導頁
     public IActionResult Login() => Redirect("/?auth=1");
 
+	public IActionResult Beaboss()
+	{
+		return View("beaboss"); // 對應 Views/Account/beaboss.cshtml
+	}
 }
