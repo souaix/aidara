@@ -1,5 +1,6 @@
 ﻿using Backend.Application.Listings;
 using Backend.Application.Ports;
+using Backend.Application.Services;
 using Backend.Application.Users;
 using Backend.Application.Wallet;
 using Backend.Domain.Wallet;
@@ -42,7 +43,9 @@ builder.Services.AddScoped<WalletService>();
 builder.Services.AddScoped<IWalletQueryRepo, WalletQueryRepo>();
 builder.Services.AddScoped<IServiceRepo, ServiceRepo>();
 builder.Services.AddScoped<IUserServiceRepo, UserServiceRepo>();
+builder.Services.AddScoped<ILocationRepo, LocationRepo>();
 
+builder.Services.AddScoped<BossServiceQuestionnaireService>();
 
 // ========= MVC / JSON / Swagger / CORS =========
 builder.Services

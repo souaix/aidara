@@ -7,4 +7,6 @@ public interface IUnitOfWork : IAsyncDisposable
     Task RollbackAsync();
 
     IWalletRepo CreateWalletRepo();
+    IUserRepo CreateUserRepo();              // 你原本有
+    IBossServiceRepo CreateBossServiceRepo(); // ✅ 新增
 }

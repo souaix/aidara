@@ -2,24 +2,28 @@
     ViewData["Title"] = "成為達人";
     Layout = "_Layout";
 }
-
+@using System.Security.Claims
+@{
+    var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+}
 <div class="container mt-5">
     <h1 class="text-center mb-4">成為達人</h1>
     <p class="text-center">填寫以下資訊，免費註冊，開始提供服務</p>
 
     <div class="text-center">
-        <button class="btn btn-primary" id="openRegisterModal">免費註冊</button>
+        <button class="btn btn-primary" id="openRegisterModal" data-user-id="@uid">免費註冊</button>
     </div>
 </div>
 
 <!-- Modal -->
-<div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">達人註冊問卷</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+
             <div class="modal-body">
                 <!-- Step 1 -->
                 <div id="step1" class="step">
@@ -48,23 +52,36 @@
                     </div>
                 </div>
 
-                <!-- Step 2: 相關服務 -->
+                <!-- Step 2: 服務方式 -->
                 <div id="step2" class="step d-none">
-                    <h5>Step 2. 選擇相關服務</h5>
-                    <div class="list-group">
-                        <label class="list-group-item"><input type="checkbox" /> 防身術</label>
-                        <label class="list-group-item"><input type="checkbox" /> CPR訓練</label>
-                        <label class="list-group-item"><input type="checkbox" /> 伴讀/陪玩</label>
+                    <h5>Step 2. 選擇服務方式</h5>
+                    <div class="list-group" id="methodList">
+                        <label class="list-group-item">
+                            <input type="checkbox" class="method-check" value="我可以上門服務" /> 我可以上門服務
+                        </label>
+                        <label class="list-group-item">
+                            <input type="checkbox" class="method-check" value="客戶到我的據點" /> 客戶到我的據點
+                        </label>
+                        <label class="list-group-item">
+                            <input type="checkbox" class="method-check" value="網路/電話服務" /> 網路/電話服務
+                        </label>
                     </div>
                 </div>
 
-                <!-- Step 3: 服務方式 -->
+                <!-- Step 3: 服務範圍 -->
                 <div id="step3" class="step d-none">
-                    <h5>Step 3. 選擇服務方式</h5>
-                    <div class="list-group">
-                        <label class="list-group-item"><input type="checkbox" /> 我可以上門服務</label>
-                        <label class="list-group-item"><input type="checkbox" /> 客戶到我的據點</label>
-                        <label class="list-group-item"><input type="checkbox" /> 網路/電話服務</label>
+                    <h5>Step 3. 選擇服務範圍</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <select id="citySelect" class="form-select">
+                                <option value="">請選擇縣市</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <select id="districtSelect" class="form-select" multiple>
+                                <option value="">請先選擇縣市</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -73,32 +90,26 @@
                     <h5>Step 4. 服務據點</h5>
                     <div class="row mb-2">
                         <div class="col-md-6">
-                            <input class="form-control" placeholder="縣/市 (CITY)" />
+                            <select id="addrCity" class="form-select">
+                                <option value="">請選擇縣/市</option>
+                            </select>
                         </div>
                         <div class="col-md-6">
-                            <input class="form-control" placeholder="區/鄉鎮 (DISTRICT)" />
+                            <select id="addrDistrict" class="form-select">
+                                <option value="">請先選擇縣市</option>
+                            </select>
                         </div>
                     </div>
                     <div class="row mb-2">
                         <div class="col-md-8">
-                            <input class="form-control" placeholder="路名 (STREET)" />
+                            <input id="addrStreet" class="form-control" placeholder="路名 (STREET)" />
                         </div>
                         <div class="col-md-4">
-                            <input class="form-control" placeholder="門牌號碼 (ADDRESS_NO)" />
+                            <input id="addrNo" class="form-control" placeholder="門牌號碼 (ADDRESS_NO)" />
                         </div>
                     </div>
                 </div>
 
-                <!-- Step 5: 服務範圍 -->
-                <div id="step5" class="step d-none">
-                    <h5>Step 5. 服務範圍</h5>
-                    <div class="list-group">
-                        <label class="list-group-item"><input type="checkbox" /> 台灣全區</label>
-                        <label class="list-group-item"><input type="checkbox" /> 台北市 大安區</label>
-                        <label class="list-group-item"><input type="checkbox" /> 新北市 板橋區</label>
-                        <label class="list-group-item"><input type="checkbox" /> 宜蘭縣 羅東鎮</label>
-                    </div>
-                </div>
             </div>
 
             <div class="modal-footer">
@@ -108,139 +119,313 @@
         </div>
     </div>
 </div>
+
 @section Scripts {
     <script>
-        let categories = [];
-        const selectedItems = new Set();
-        let currentStep = 1;
-        const totalSteps = 5;
+        /** ================== 常數 / 狀態 ================== */
+        const API_BASE = "https://localhost:7030";
+        const STEP = { CATEGORY: 1, METHOD: 2, AREA: 3, ADDRESS: 4 };
+        const FINAL_STEP = STEP.ADDRESS;
 
-        // 讀取服務分類
+        let categories = [];                 // 服務分類資料
+        const selectedItems = new Set();     // Step1 已選服務項目 itemId(Guid)
+        const selectedMethods = new Set();   // Step2 已選服務方式（中文）
+        let currentStep = STEP.CATEGORY;
+        let stepHistory = [];                // 實際走過的步驟（for 上一步）
+
+        /** ================== 共用 UI 控制 ================== */
+        function showStep(step) {
+            document.querySelectorAll(".step").forEach(s => s.classList.add("d-none"));
+            document.getElementById("step" + step).classList.remove("d-none");
+            currentStep = step;
+            document.getElementById("prevStep").disabled = (stepHistory.length <= 1);
+            updateNextButtonText();
+        }
+
+        function pushHistory(step) {
+            if (stepHistory[stepHistory.length - 1] !== step) stepHistory.push(step);
+        }
+
+        function updateNextButtonText() {
+            const btn = document.getElementById("nextStep");
+            if (currentStep === FINAL_STEP || (currentStep === STEP.METHOD && onlyOnlineSelected())) {
+                btn.textContent = "完成";
+            } else {
+                btn.textContent = "下一步";
+            }
+        }
+
+        /** ================== 規則判斷 ================== */
+        function onlyOnlineSelected() {
+            return selectedMethods.size === 1 && selectedMethods.has("網路/電話服務");
+        }
+
+        function getNextStep(curr) {
+            if (curr === STEP.CATEGORY) return STEP.METHOD;
+
+            if (curr === STEP.METHOD) {
+                const hasHome = selectedMethods.has("我可以上門服務");
+                const hasStore = selectedMethods.has("客戶到我的據點");
+
+                if (onlyOnlineSelected()) return null;               // 直接完成
+                if (hasHome && !hasStore) return STEP.AREA;          // 只有上門
+                if (!hasHome && hasStore) return STEP.ADDRESS;       // 只有到店
+                if (hasHome && hasStore) return STEP.AREA;           // 都選 → 先服務範圍
+                return STEP.METHOD;                                   // 沒選任何 → 留步
+            }
+
+            if (curr === STEP.AREA) {
+                if (selectedMethods.has("客戶到我的據點")) return STEP.ADDRESS; // 之後要填據點
+                return null; // 完成
+            }
+
+            if (curr === STEP.ADDRESS) return null; // 完成
+
+            return Math.min(curr + 1, FINAL_STEP);
+        }
+
+        /** ================== 完成：組 DTO + AJAX ================== */
+        async function finish() {
+            const userId = document.getElementById("openRegisterModal").dataset.userId || "00000000-0000-0000-0000-000000000001";
+
+            // Step1: 服務項目
+            const serviceItemIds = Array.from(selectedItems);
+
+            // Step2: 服務方式
+            const serviceMethods = Array.from(selectedMethods);
+
+            // Step3: 服務範圍
+            const serviceAreas = [];
+            const citySel = document.getElementById("citySelect");
+            const districtSel = document.getElementById("districtSelect");
+            if (citySel.value && districtSel.selectedOptions.length > 0) {
+                Array.from(districtSel.selectedOptions).forEach(opt => {
+                    serviceAreas.push({
+                        cityId: parseInt(citySel.value),
+                        districtId: parseInt(opt.value)
+                    });
+                });
+            }
+
+            // Step4: 服務據點
+            const serviceAddresses = [];
+            const addrCity = document.getElementById("addrCity").value;
+            const addrDistrict = document.getElementById("addrDistrict").value;
+            if (addrCity && addrDistrict) {
+                serviceAddresses.push({
+                    cityId: parseInt(addrCity),
+                    districtId: parseInt(addrDistrict),
+                    street: document.getElementById("addrStreet").value || "",
+                    addressNo: document.getElementById("addrNo").value || ""
+                });
+            }
+
+            const dto = {
+                userId,
+                serviceItemIds,
+                serviceMethods,
+                serviceAreas,
+                serviceAddresses
+            };
+
+        try {
+          const res = await fetch(`${API_BASE}/api/BossServiceQuestionnaire`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(dto)
+          });
+          if (!res.ok) {
+              const text = await res.text();
+              throw new Error(`送出失敗 (${res.status}) ${text || ""}`);
+          }
+          alert("註冊完成！");
+          bootstrap.Modal.getInstance(document.getElementById("registerModal")).hide();
+        } catch (err) {
+          console.error(err);
+          alert(err.message || "送出失敗，請稍後再試");
+        }
+
+        }
+
+        /** ================== Step1：載入分類 ================== */
         async function loadCategories() {
+            const catList = document.getElementById("categoryList");
+            catList.innerHTML = '<li class="list-group-item text-muted">載入中...</li>';
             try {
-                const res = await fetch('https://localhost:7030/api/BossServices/categories');
-                if (!res.ok) {
-                    throw new Error("API 回應錯誤: " + res.status);
-                }
+                const res = await fetch(`${API_BASE}/api/BossServices/categories`);
+                if (!res.ok) throw new Error(res.status);
                 categories = await res.json();
 
-                const catList = document.getElementById("categoryList");
                 catList.innerHTML = "";
-                if (categories.length === 0) {
+                if (!categories?.length) {
                     catList.innerHTML = '<li class="list-group-item text-muted">沒有分類資料</li>';
                     return;
                 }
                 categories.forEach(c => {
                     const li = document.createElement("li");
                     li.className = "list-group-item category-item";
-                    li.dataset.id = c.categoryId;
+                    li.dataset.id = c.categoryId; // Guid
                     li.textContent = c.name;
                     catList.appendChild(li);
                 });
-            } catch (err) {
-                console.error("讀取服務分類失敗:", err);
-                document.getElementById("categoryList").innerHTML =
-                    '<li class="list-group-item text-danger">載入失敗</li>';
+            } catch (e) {
+                console.error("讀取服務分類失敗:", e);
+                catList.innerHTML = '<li class="list-group-item text-danger">載入失敗</li>';
             }
         }
 
         // 點大分類 → 載入中分類
-        document.addEventListener("click", function (e) {
-            if (e.target.classList.contains("category-item")) {
-                const catId = e.target.dataset.id;
-                const cat = categories.find(c => c.categoryId === catId);
+        document.addEventListener("click", e => {
+            if (!e.target.classList.contains("category-item")) return;
+            const catId = e.target.dataset.id;
+            const cat = categories.find(c => String(c.categoryId) === String(catId));
 
-                const subList = document.getElementById("subcategoryList");
-                subList.innerHTML = "";
-                cat.subcategories.forEach(s => {
-                    const li = document.createElement("li");
-                    li.className = "list-group-item subcategory-item";
-                    li.dataset.id = s.subcategoryId;
-                    li.textContent = s.name;
-                    subList.appendChild(li);
-                });
-
+            const subList = document.getElementById("subcategoryList");
+            subList.innerHTML = "";
+            if (!cat?.subcategories?.length) {
+                subList.innerHTML = '<li class="list-group-item text-muted">此分類沒有中分類</li>';
                 document.getElementById("itemList").innerHTML =
                     '<li class="list-group-item text-muted">請先選擇中分類</li>';
+                return;
+            }
+            cat.subcategories.forEach(s => {
+                const li = document.createElement("li");
+                li.className = "list-group-item subcategory-item";
+                li.dataset.id = s.subcategoryId;
+                li.textContent = s.name;
+                subList.appendChild(li);
+            });
+
+            document.getElementById("itemList").innerHTML =
+                '<li class="list-group-item text-muted">請先選擇中分類</li>';
+        });
+
+        // 點中分類 → 載入服務項目
+        document.addEventListener("click", e => {
+            if (!e.target.classList.contains("subcategory-item")) return;
+            const subId = e.target.dataset.id;
+            const cat = categories.find(c => c.subcategories?.some(s => String(s.subcategoryId) === String(subId)));
+            const sub = cat?.subcategories?.find(s => String(s.subcategoryId) === String(subId));
+            const itemList = document.getElementById("itemList");
+
+            if (!sub?.items?.length) {
+                itemList.innerHTML = '<li class="list-group-item text-muted">此中分類沒有服務項目</li>';
+                return;
+            }
+
+            const items = [...sub.items].sort((a, b) => {
+                const aSel = selectedItems.has(a.itemId);
+                const bSel = selectedItems.has(b.itemId);
+                return (aSel === bSel) ? 0 : (aSel ? -1 : 1);
+            });
+
+            itemList.innerHTML = "";
+            items.forEach(i => {
+                const label = document.createElement("label");
+                label.className = "list-group-item";
+
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.className = "item-check";
+                checkbox.dataset.id = i.itemId;
+                checkbox.checked = selectedItems.has(i.itemId);
+                checkbox.addEventListener("change", () => {
+                    if (checkbox.checked) selectedItems.add(i.itemId);
+                    else selectedItems.delete(i.itemId);
+                });
+
+                label.appendChild(checkbox);
+                label.append(" " + i.name);
+                itemList.appendChild(label);
+            });
+        });
+
+        /** ================== Step3/4：載入城市/行政區 ================== */
+        async function loadCities(intoSelectId) {
+            try {
+                const res = await fetch(`${API_BASE}/api/Location/cities`);
+                const cities = await res.json();
+                const sel = document.getElementById(intoSelectId);
+                sel.innerHTML = '<option value="">請選擇縣市</option>';
+                cities.forEach(c => {
+                    const opt = document.createElement("option");
+                    opt.value = c.cityId;
+                    opt.textContent = c.cityName;
+                    sel.appendChild(opt);
+                });
+            } catch (err) {
+                console.error("讀取縣市失敗:", err);
+            }
+        }
+
+        async function loadDistricts(cityId, intoSelectId, allowMultiple = false) {
+            const sel = document.getElementById(intoSelectId);
+            sel.innerHTML = allowMultiple ? "" : '<option value="">請先選擇縣市</option>';
+            if (!cityId) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/Location/districts/${cityId}`);
+                const districts = await res.json();
+                districts.forEach(d => {
+                    const opt = document.createElement("option");
+                    opt.value = d.districtId;
+                    opt.textContent = d.districtName;
+                    sel.appendChild(opt);
+                });
+            } catch (err) {
+                console.error("讀取行政區失敗:", err);
+            }
+        }
+
+        document.getElementById("citySelect").addEventListener("change", function () {
+            loadDistricts(this.value, "districtSelect", true);
+        });
+
+        document.getElementById("addrCity").addEventListener("change", function () {
+            loadDistricts(this.value, "addrDistrict", false);
+        });
+
+        /** ================== Modal 開啟 / 步驟導覽 ================== */
+        document.getElementById("openRegisterModal").addEventListener("click", () => {
+            // 初始化狀態
+            selectedMethods.clear();
+            // 若需要也可清空 selectedItems：selectedItems.clear();
+            stepHistory = [];
+            pushHistory(STEP.CATEGORY);
+            showStep(STEP.CATEGORY);
+
+            // 載入資料
+            loadCategories();
+            loadCities("citySelect");
+            loadCities("addrCity");
+
+            // 開啟 Modal
+            new bootstrap.Modal(document.getElementById("registerModal")).show();
+        });
+
+        document.getElementById("nextStep").addEventListener("click", () => {
+            // 在 Step2 先收集勾選的服務方式
+            if (currentStep === STEP.METHOD) {
+                selectedMethods.clear();
+                document.querySelectorAll("#step2 .method-check:checked").forEach(cb => selectedMethods.add(cb.value));
+                if (onlyOnlineSelected()) { finish(); return; }
+            }
+
+            if (currentStep === FINAL_STEP) { finish(); return; }
+
+            const next = getNextStep(currentStep);
+            if (next === null) { finish(); return; }
+            pushHistory(next);
+            showStep(next);
+        });
+
+        document.getElementById("prevStep").addEventListener("click", () => {
+            if (stepHistory.length > 1) {
+                stepHistory.pop();
+                showStep(stepHistory[stepHistory.length - 1]);
             }
         });
 
-        // 點中分類 → 載入服務項目 (已勾選的排前面)
-        document.addEventListener("click", function (e) {
-            if (e.target.classList.contains("subcategory-item")) {
-                const subId = e.target.dataset.id;
-                const cat = categories.find(c => c.subcategories.some(s => s.subcategoryId === subId));
-                const sub = cat.subcategories.find(s => s.subcategoryId === subId);
-
-                const items = [...sub.items].sort((a, b) => {
-                    const aSel = selectedItems.has(a.itemId);
-                    const bSel = selectedItems.has(b.itemId);
-                    return (aSel === bSel) ? 0 : (aSel ? -1 : 1);
-                });
-
-                const itemList = document.getElementById("itemList");
-                itemList.innerHTML = "";
-                items.forEach(i => {
-                    const label = document.createElement("label");
-                    label.className = "list-group-item";
-
-                    const checkbox = document.createElement("input");
-                    checkbox.type = "checkbox";
-                    checkbox.className = "item-check";
-                    checkbox.dataset.id = i.itemId;
-                    if (selectedItems.has(i.itemId)) checkbox.checked = true;
-
-                    checkbox.addEventListener("change", () => {
-                        if (checkbox.checked) {
-                            selectedItems.add(i.itemId);
-                        } else {
-                            selectedItems.delete(i.itemId);
-                        }
-                    });
-
-                    label.appendChild(checkbox);
-                    label.append(" " + i.name);
-                    itemList.appendChild(label);
-                });
-            }
-        });
-
-        // Step 流程控制
-        document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById("openRegisterModal").addEventListener("click", () => {
-                const modal = new bootstrap.Modal(document.getElementById("registerModal"));
-                modal.show();
-                loadCategories();
-            });
-
-            document.getElementById("nextStep").addEventListener("click", () => {
-                if (currentStep < totalSteps) {
-                    document.getElementById("step" + currentStep).classList.add("d-none");
-                    currentStep++;
-                    document.getElementById("step" + currentStep).classList.remove("d-none");
-                    document.getElementById("prevStep").disabled = false;
-                    if (currentStep === totalSteps) {
-                        document.getElementById("nextStep").textContent = "完成";
-                    }
-                } else {
-                    console.log("選取的服務項目:", Array.from(selectedItems));
-                    alert("註冊完成！");
-                    bootstrap.Modal.getInstance(document.getElementById("registerModal")).hide();
-                }
-            });
-
-            document.getElementById("prevStep").addEventListener("click", () => {
-                if (currentStep > 1) {
-                    document.getElementById("step" + currentStep).classList.add("d-none");
-                    currentStep--;
-                    document.getElementById("step" + currentStep).classList.remove("d-none");
-                    document.getElementById("nextStep").textContent = "下一步";
-                    if (currentStep === 1) {
-                        document.getElementById("prevStep").disabled = true;
-                    }
-                }
-            });
-        });
+        /** ================== 初始：預設顯示 Step1 ================== */
+        showStep(STEP.CATEGORY);
     </script>
 }
-
