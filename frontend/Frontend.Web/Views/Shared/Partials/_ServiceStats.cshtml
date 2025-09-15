@@ -1,0 +1,18 @@
+﻿<div id="stats-container"></div>
+
+<script>
+    function renderStats(stats) {
+        const container = document.getElementById("stats-container");
+        container.innerHTML = stats.map(stat => `
+            <div class="col-6 col-md-4 col-lg-3 mb-3">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">City: ${stat.cityId}</h5>
+                        <p class="card-text">District: ${stat.districtId ?? '-'}</p>
+                        <span class="badge bg-primary">${stat.storeCount} 家店</span>
+                    </div>
+                </div>
+            </div>
+        `).join("");
+    }
+</script>

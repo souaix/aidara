@@ -47,6 +47,10 @@ builder.Services.AddScoped<ILocationRepo, LocationRepo>();
 
 builder.Services.AddScoped<BossServiceQuestionnaireService>();
 
+builder.Services.AddScoped<IServiceStatRepo, ServiceStatRepo>();
+builder.Services.AddScoped<IServiceStatService, ServiceStatService>();
+
+
 // ========= MVC / JSON / Swagger / CORS =========
 builder.Services
     .AddControllers()

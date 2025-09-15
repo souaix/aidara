@@ -10,11 +10,13 @@ namespace Backend.Api.Controllers
     {
         private readonly IServiceRepo _serviceRepo;
         private readonly IUserServiceRepo _userServiceRepo;
+        private readonly IServiceStatService _statService;
 
-        public BossServicesController(IServiceRepo serviceRepo, IUserServiceRepo userServiceRepo)
+        public BossServicesController(IServiceRepo serviceRepo, IUserServiceRepo userServiceRepo, IServiceStatService statService)
         {
             _serviceRepo = serviceRepo;
             _userServiceRepo = userServiceRepo;
+            _statService = statService;
         }
 
         /// <summary>
@@ -45,6 +47,16 @@ namespace Backend.Api.Controllers
         {
             await _userServiceRepo.UpdateUserServicesAsync(userId, itemIds, ct);
             return NoContent();
+        }
+
+        /// <summary>
+        /// 取得某服務項目在各縣市區的店家數
+        /// </summary>
+        [HttpGet("stats/{itemId:guid}")]
+        public async Task<ActionResult<List<ServiceStatVm>>> GetServiceStats(Guid itemId, CancellationToken ct)
+        {
+            var stats = await _statService.GetServiceStatsAsync(itemId, ct);
+            return Ok(stats);
         }
     }
 }

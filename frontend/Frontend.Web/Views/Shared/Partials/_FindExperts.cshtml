@@ -33,8 +33,12 @@
             <div class="col-12 col-md-9">
                 <div id="tiles-container">
                     @await Html.PartialAsync("~/Views/Shared/Partials/_CategoryTiles.cshtml",
-                             new Frontend.Web.Controllers.BrowseController.CategoryTilesVm("interior",
-                             Enumerable.Range(1, 8).Select(i => $"~/images/experts/interior/{i:D2}.jpg").ToArray()))
+                    new Frontend.Web.ViewModels.CategoryTilesVm(
+                    "interior",
+                    Enumerable.Range(1, 8).Select(i => $"~/images/experts/interior/{i:D2}.jpg"),
+                    Enumerable.Range(1, 8).Select(i => Guid.NewGuid()) // ⚠️ 這裡要改成真實的 service_item.item_id
+                    ))
+
                 </div>
             </div>
         </div>
