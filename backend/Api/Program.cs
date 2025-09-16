@@ -5,6 +5,7 @@ using Backend.Application.Users;
 using Backend.Application.Wallet;
 using Backend.Domain.Wallet;
 using Backend.Infrastructure.Persistence.Postgres;
+using Infrastructure.Persistence.Mock;
 using Npgsql;
 using System.Text.Json.Serialization;
 
@@ -41,14 +42,25 @@ builder.Services.AddScoped<Func<IUserRepo>>(sp => () =>
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<WalletService>();
 builder.Services.AddScoped<IWalletQueryRepo, WalletQueryRepo>();
-builder.Services.AddScoped<IServiceRepo, ServiceRepo>();
-builder.Services.AddScoped<IUserServiceRepo, UserServiceRepo>();
+
+
 builder.Services.AddScoped<ILocationRepo, LocationRepo>();
 
 builder.Services.AddScoped<BossServiceQuestionnaireService>();
-
-builder.Services.AddScoped<IServiceStatRepo, ServiceStatRepo>();
 builder.Services.AddScoped<IServiceStatService, ServiceStatService>();
+
+if (builder.Environment.IsDevelopment())
+{	
+	builder.Services.AddSingleton<IServiceStatRepo, MockServiceStatRepo>();
+	builder.Services.AddScoped<IUserServiceRepo, MockUserServiceRepo>();
+	builder.Services.AddScoped<IServiceRepo, MockServiceRepo>();
+}
+else
+{
+	builder.Services.AddScoped<IServiceStatRepo, ServiceStatRepo>();
+	builder.Services.AddScoped<IUserServiceRepo, UserServiceRepo>();
+	builder.Services.AddScoped<IServiceRepo, ServiceRepo>();
+}
 
 
 // ========= MVC / JSON / Swagger / CORS =========

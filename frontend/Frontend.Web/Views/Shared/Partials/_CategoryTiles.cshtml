@@ -3,58 +3,64 @@
 
 @if (Model.Pics.Count == 0)
 {
-    <div class="alert alert-light border d-flex align-items-center" role="alert">
-        <div class="me-2">😅</div>
-        <div>「@Model.Cat」分類的圖片還在準備中，稍後上架。</div>
-    </div>
+	<div class="alert alert-light border d-flex align-items-center" role="alert">
+		<div class="me-2">😅</div>
+		<div>「@Model.Cat」分類的圖片還在準備中，稍後上架。</div>
+	</div>
 }
 else
 {
-    <div class="row g-3">
-        @for (int i = 0; i < Model.Pics.Count; i++)
-        {
-            <div class="col-12 col-sm-6 col-lg-3">
-                <a class="card card-tile text-white text-decoration-none service-link"
-                   href="javascript:void(0);"
-                   data-item-id="@Model.ItemIds[i]"
-                   data-category="@Model.Cat">
-                    <div class="ratio ratio-16x9">
-                        <img src="@Url.Content(Model.Pics[i])" class="object-fit-cover rounded" alt="@Model.Cat @(i + 1)" />
-                    </div>
-                    <div class="tile-caption"><span>@Model.Cat @(i + 1)</span></div>
-                </a>
+	<div class="row g-3">
+		@for (int i = 0; i < Model.Pics.Count; i++)
+		{
+			<div class="col-12 col-sm-6 col-lg-3">
+				<a class="card card-tile text-white text-decoration-none service-link"
+				   href="javascript:void(0);"
+				   data-item-id="@Model.ItemIds[i]"
+				   data-category="@Model.Cat">
+					<div class="ratio ratio-16x9">
+						<img src="@Url.Content(Model.Pics[i])" class="object-fit-cover rounded" alt="@Model.Cat @(i + 1)" />
+					</div>
+					<div class="tile-caption"><span>@Model.Cat @(i + 1)</span></div>
+				</a>
 
-            </div>
-        }
-    </div>
+			</div>
+		}
+	</div>
 }
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        document.querySelectorAll(".service-link").forEach(el => {
-            el.addEventListener("click", async function (e) {
-                e.preventDefault();
-                const itemId = this.dataset.itemId;
+	document.addEventListener("DOMContentLoaded", function () {
+		document.querySelectorAll(".service-link").forEach(el => {
+			el.addEventListener("click", async function (e) {
+				e.preventDefault();
+				const itemId = this.dataset.itemId;
 
-                // 呼叫 API (MVP 直接回傳 JSON)
-                // const res = await fetch(`/api/BossServices/stats/${itemId}`);
-                const res = await fetch(`https://localhost:7030/api/BossServices/stats/${itemId}`);
+				// 呼叫 API (MVP 直接回傳 JSON)
+				// const res = await fetch(`/api/BossServices/stats/${itemId}`);
+				const res = await fetch(`https://localhost:7030/api/BossServices/stats/${itemId}`);
 
-                const stats = await res.json();
+				const stats = await res.json();
 
-                // 把結果渲染到右側 tiles-container
-                const container = document.getElementById("tiles-container");
-                container.innerHTML = stats.map(stat => `
-                    <div class="col-6 col-md-4 col-lg-3 mb-3">
-                        <div class="card h-100 text-center">
-                            <div class="card-body">
-                                <h5 class="card-title">City: ${stat.cityId}</h5>
-                                <p class="card-text">District: ${stat.districtId ?? '-'}</p>
-                                <span class="badge bg-primary">${stat.storeCount} 家店</span>
-                            </div>
-                        </div>
-                    </div>
-                `).join("");
-            });
-        });
-    });
+				// 把結果渲染到右側 tiles-container
+				const container = document.getElementById("tiles-container");
+
+				container.innerHTML = `
+				  <div class="row">
+					${stats.map(stat => `
+					  <div class="col-6 col-md-4 col-lg-3 mb-3">
+						<div class="card h-100 text-center">
+						  <div class="card-body">
+							<h5 class="card-title">${stat.cityId}</h5>
+							<p class="card-text">${stat.districtId ?? '-'}</p>
+							<span class="badge bg-primary">${stat.storeCount} 家店</span>
+						  </div>
+						</div>
+					  </div>
+					`).join("")}
+				  </div>
+				`;
+
+			});
+		});
+	});
 </script>
