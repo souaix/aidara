@@ -9,7 +9,20 @@ using Infrastructure.Persistence.Mock;
 using Npgsql;
 using System.Text.Json.Serialization;
 
+// 在建構 Host 前手動設定環境
+#if DEBUG
+    Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+#else
+Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
+#endif
+
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+    .AddEnvironmentVariables();
 
 // ========= 連線字串 =========
 var connString = builder.Configuration.GetConnectionString("Postgres");
@@ -93,7 +106,9 @@ builder.Services.AddCors(options =>
 
 // ========= Pipeline =========
 var app = builder.Build();
+app.UseHttpsRedirection();
 
+app.UseRouting();
 app.UseCors("AllowFrontendDev");
 
 

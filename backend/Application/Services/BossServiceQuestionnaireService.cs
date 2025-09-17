@@ -18,8 +18,7 @@ public class BossServiceQuestionnaireService
         try
         {
             var repo = uow.CreateBossServiceRepo();
-
-            await repo.ReplaceItemsAsync(dto.UserId, dto.ServiceItemIds, ct);
+            await repo.ReplaceItemsAsync(dto.UserId, dto.ItemPriceRanges, ct);            
             await repo.ReplaceMethodsAsync(dto.UserId, dto.ServiceMethods, ct);
             await repo.ReplaceAreasAsync(dto.UserId, dto.ServiceAreas, ct);
             await repo.ReplaceAddressesAsync(dto.UserId, dto.ServiceAddresses, ct);

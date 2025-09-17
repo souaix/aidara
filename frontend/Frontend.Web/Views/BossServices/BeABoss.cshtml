@@ -52,9 +52,42 @@
                     </div>
                 </div>
 
-                <!-- Step 2: 服務方式 -->
+                <!-- Step 2：價格區間 -->
                 <div id="step2" class="step d-none">
-                    <h5>Step 2. 選擇服務方式</h5>
+                    <h5>Step 2. 設定各項目的價格區間（幣別：TWD）</h5>
+                    <p class="text-muted small mb-2">請為每個已勾選的「服務項目」填入最低價與最高價（至少為 0，最高價需 ≥ 最低價）。</p>
+                    <div class="d-flex gap-2 align-items-end mb-3">
+                        <div>
+                            <label class="form-label mb-1">批次最低價</label>
+                            <input type="number" min="0" step="1" id="batchMin" class="form-control" placeholder="例：500" />
+                        </div>
+                        <div>
+                            <label class="form-label mb-1">批次最高價</label>
+                            <input type="number" min="0" step="1" id="batchMax" class="form-control" placeholder="例：1500" />
+                        </div>
+                        <button class="btn btn-outline-secondary" id="applyBatch">套用到所有項目</button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="min-width: 240px;">服務項目</th>
+                                    <th style="min-width: 160px;">最低價</th>
+                                    <th style="min-width: 160px;">最高價</th>
+                                    <th style="width: 40%;">檢查</th>
+                                </tr>
+                            </thead>
+                            <tbody id="priceTbody">
+                                <tr><td colspan="4" class="text-muted">尚未勾選任何服務項目</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Step 3: 服務方式 -->
+                <div id="step3" class="step d-none">
+                    <h5>Step 3. 選擇服務方式</h5>
                     <div class="list-group" id="methodList">
                         <label class="list-group-item">
                             <input type="checkbox" class="method-check" value="我可以上門服務" /> 我可以上門服務
@@ -68,9 +101,9 @@
                     </div>
                 </div>
 
-                <!-- Step 3: 服務範圍 -->
-                <div id="step3" class="step d-none">
-                    <h5>Step 3. 選擇服務範圍</h5>
+                <!-- Step 4: 服務範圍 -->
+                <div id="step4" class="step d-none">
+                    <h5>Step 4. 選擇服務範圍</h5>
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <select id="citySelect" class="form-select">
@@ -85,9 +118,9 @@
                     </div>
                 </div>
 
-                <!-- Step 4: 服務據點 -->
-                <div id="step4" class="step d-none">
-                    <h5>Step 4. 服務據點</h5>
+                <!-- Step 5: 服務據點 -->
+                <div id="step5" class="step d-none">
+                    <h5>Step 5. 服務據點</h5>
                     <div class="row mb-2">
                         <div class="col-md-6">
                             <select id="addrCity" class="form-select">
@@ -124,14 +157,15 @@
     <script>
         /** ================== 常數 / 狀態 ================== */
         const API_BASE = "https://localhost:7030";
-        const STEP = { CATEGORY: 1, METHOD: 2, AREA: 3, ADDRESS: 4 };
+        const STEP = { CATEGORY: 1, PRICE: 2, METHOD: 3, AREA: 4, ADDRESS: 5 };
         const FINAL_STEP = STEP.ADDRESS;
 
-        let categories = [];                 // 服務分類資料
-        const selectedItems = new Set();     // Step1 已選服務項目 itemId(Guid)
-        const selectedMethods = new Set();   // Step2 已選服務方式（中文）
+        let categories = [];                      // 服務分類資料
+        const selectedItems = new Set();          // Step1 已選服務項目 itemId(Guid)
+        const selectedMethods = new Set();        // Step3 已選服務方式（中文）
+        const itemPriceRanges = new Map();        // Step2 各項目價格：key=itemId, val={min,max}
         let currentStep = STEP.CATEGORY;
-        let stepHistory = [];                // 實際走過的步驟（for 上一步）
+        let stepHistory = [];                     // 實際走過的步驟（for 上一步）
 
         /** ================== 共用 UI 控制 ================== */
         function showStep(step) {
@@ -140,6 +174,8 @@
             currentStep = step;
             document.getElementById("prevStep").disabled = (stepHistory.length <= 1);
             updateNextButtonText();
+
+            if (step === STEP.PRICE) renderPriceStep();
         }
 
         function pushHistory(step) {
@@ -161,21 +197,22 @@
         }
 
         function getNextStep(curr) {
-            if (curr === STEP.CATEGORY) return STEP.METHOD;
+            if (curr === STEP.CATEGORY) return STEP.PRICE;
+            if (curr === STEP.PRICE)    return STEP.METHOD;
 
             if (curr === STEP.METHOD) {
-                const hasHome = selectedMethods.has("我可以上門服務");
+                const hasHome  = selectedMethods.has("我可以上門服務");
                 const hasStore = selectedMethods.has("客戶到我的據點");
 
-                if (onlyOnlineSelected()) return null;               // 直接完成
-                if (hasHome && !hasStore) return STEP.AREA;          // 只有上門
-                if (!hasHome && hasStore) return STEP.ADDRESS;       // 只有到店
-                if (hasHome && hasStore) return STEP.AREA;           // 都選 → 先服務範圍
-                return STEP.METHOD;                                   // 沒選任何 → 留步
+                if (onlyOnlineSelected()) return null;                 // 直接完成
+                if (hasHome && !hasStore) return STEP.AREA;            // 只有上門
+                if (!hasHome && hasStore) return STEP.ADDRESS;         // 只有到店
+                if (hasHome && hasStore) return STEP.AREA;             // 都選 → 先服務範圍
+                return STEP.METHOD;                                     // 沒選任何 → 留步
             }
 
             if (curr === STEP.AREA) {
-                if (selectedMethods.has("客戶到我的據點")) return STEP.ADDRESS; // 之後要填據點
+                if (selectedMethods.has("客戶到我的據點")) return STEP.ADDRESS;
                 return null; // 完成
             }
 
@@ -184,6 +221,128 @@
             return Math.min(curr + 1, FINAL_STEP);
         }
 
+        /** ========== Step2：價格區間 ========== */
+        function findItemName(itemId) {
+            for (const c of categories) {
+                for (const s of (c.subcategories || [])) {
+                    const item = (s.items || []).find(i => String(i.itemId) === String(itemId));
+                    if (item) return item.name;
+                }
+            }
+            return "(未知項目)";
+        }
+
+        function renderPriceStep() {
+            const tbody = document.getElementById("priceTbody");
+            tbody.innerHTML = "";
+
+            const itemIds = Array.from(selectedItems);
+            if (itemIds.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-muted">尚未勾選任何服務項目</td></tr>';
+                return;
+            }
+
+            itemIds.forEach(id => {
+                const row = document.createElement("tr");
+
+                const tdName = document.createElement("td");
+                tdName.textContent = findItemName(id);
+
+                const tdMin = document.createElement("td");
+                const minInput = document.createElement("input");
+                minInput.type = "number";
+                minInput.className = "form-control";
+                minInput.min = "0";
+                minInput.step = "1";
+                minInput.placeholder = "最低價";
+                if (itemPriceRanges.has(id)) minInput.value = itemPriceRanges.get(id).min ?? "";
+                tdMin.appendChild(minInput);
+
+                const tdMax = document.createElement("td");
+                const maxInput = document.createElement("input");
+                maxInput.type = "number";
+                maxInput.className = "form-control";
+                maxInput.min = "0";
+                maxInput.step = "1";
+                maxInput.placeholder = "最高價";
+                if (itemPriceRanges.has(id)) maxInput.value = itemPriceRanges.get(id).max ?? "";
+                tdMax.appendChild(maxInput);
+
+                const tdCheck = document.createElement("td");
+                const msg = document.createElement("div");
+                msg.className = "small";
+                msg.textContent = "請輸入價格";
+                tdCheck.appendChild(msg);
+
+                function updateRange() {
+                    const min = Number(minInput.value);
+                    const max = Number(maxInput.value);
+
+                    // 清除狀態
+                    minInput.classList.remove("is-invalid");
+                    maxInput.classList.remove("is-invalid");
+
+                    if (Number.isFinite(min) && Number.isFinite(max)) {
+                        if (min < 0 || max < 0) {
+                            msg.textContent = "價格不可小於 0";
+                            minInput.classList.add("is-invalid");
+                            maxInput.classList.add("is-invalid");
+                        } else if (max < min) {
+                            msg.textContent = "最高價需 ≥ 最低價";
+                            minInput.classList.add("is-invalid");
+                            maxInput.classList.add("is-invalid");
+                        } else {
+                            msg.textContent = "OK";
+                            itemPriceRanges.set(id, { min, max });
+                        }
+                    } else {
+                        msg.textContent = "請輸入數字";
+                    }
+                }
+
+                minInput.addEventListener("input", updateRange);
+                maxInput.addEventListener("input", updateRange);
+
+                // 初次執行一次檢查
+                updateRange();
+
+                row.appendChild(tdName);
+                row.appendChild(tdMin);
+                row.appendChild(tdMax);
+                row.appendChild(tdCheck);
+                tbody.appendChild(row);
+            });
+        }
+
+        function validatePriceStep() {
+            // 需對每個已選 item 都有有效區間
+            for (const id of selectedItems) {
+                if (!itemPriceRanges.has(id)) return false;
+                const r = itemPriceRanges.get(id);
+                if (r == null) return false;
+                const min = Number(r.min), max = Number(r.max);
+                if (!Number.isFinite(min) || !Number.isFinite(max)) return false;
+                if (min < 0 || max < 0 || max < min) return false;
+            }
+            return selectedItems.size > 0;
+        }
+
+        document.getElementById("applyBatch").addEventListener("click", () => {
+            const bmin = Number(document.getElementById("batchMin").value);
+            const bmax = Number(document.getElementById("batchMax").value);
+            if (!Number.isFinite(bmin) || !Number.isFinite(bmax)) {
+                alert("請輸入正確的批次價格（數字）");
+                return;
+            }
+            if (bmin < 0 || bmax < 0 || bmax < bmin) {
+                alert("批次最高價需 ≥ 最低價，且不可小於 0");
+                return;
+            }
+            // 寫進暫存，並重新 render 以反映到輸入框
+            for (const id of selectedItems) itemPriceRanges.set(id, { min: bmin, max: bmax });
+            renderPriceStep();
+        });
+
         /** ================== 完成：組 DTO + AJAX ================== */
         async function finish() {
             const userId = document.getElementById("openRegisterModal").dataset.userId || "00000000-0000-0000-0000-000000000001";
@@ -191,14 +350,20 @@
             // Step1: 服務項目
             const serviceItemIds = Array.from(selectedItems);
 
-            // Step2: 服務方式
+            // Step2: 價格區間
+            const itemPriceRangesArr = serviceItemIds.map(id => {
+                const r = itemPriceRanges.get(id);
+                return { itemId: id, minPrice: Number(r?.min ?? 0), maxPrice: Number(r?.max ?? 0) };
+            });
+
+            // Step3: 服務方式
             const serviceMethods = Array.from(selectedMethods);
 
-            // Step3: 服務範圍
+            // Step4: 服務範圍
             const serviceAreas = [];
             const citySel = document.getElementById("citySelect");
             const districtSel = document.getElementById("districtSelect");
-            if (citySel.value && districtSel.selectedOptions.length > 0) {
+            if (citySel && citySel.value && districtSel && districtSel.selectedOptions.length > 0) {
                 Array.from(districtSel.selectedOptions).forEach(opt => {
                     serviceAreas.push({
                         cityId: parseInt(citySel.value),
@@ -207,7 +372,7 @@
                 });
             }
 
-            // Step4: 服務據點
+            // Step5: 服務據點
             const serviceAddresses = [];
             const addrCity = document.getElementById("addrCity").value;
             const addrDistrict = document.getElementById("addrDistrict").value;
@@ -223,28 +388,28 @@
             const dto = {
                 userId,
                 serviceItemIds,
+                itemPriceRanges: itemPriceRangesArr,   // ★ 新增
                 serviceMethods,
                 serviceAreas,
                 serviceAddresses
             };
 
-        try {
-          const res = await fetch(`${API_BASE}/api/BossServiceQuestionnaire`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(dto)
-          });
-          if (!res.ok) {
-              const text = await res.text();
-              throw new Error(`送出失敗 (${res.status}) ${text || ""}`);
-          }
-          alert("註冊完成！");
-          bootstrap.Modal.getInstance(document.getElementById("registerModal")).hide();
-        } catch (err) {
-          console.error(err);
-          alert(err.message || "送出失敗，請稍後再試");
-        }
-
+            try {
+                const res = await fetch(`${API_BASE}/api/BossServiceQuestionnaire`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dto)
+                });
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`送出失敗 (${res.status}) ${text || ""}`);
+                }
+                alert("註冊完成！");
+                bootstrap.Modal.getInstance(document.getElementById("registerModal")).hide();
+            } catch (err) {
+                console.error(err);
+                alert(err.message || "送出失敗，請稍後再試");
+            }
         }
 
         /** ================== Step1：載入分類 ================== */
@@ -330,8 +495,12 @@
                 checkbox.dataset.id = i.itemId;
                 checkbox.checked = selectedItems.has(i.itemId);
                 checkbox.addEventListener("change", () => {
-                    if (checkbox.checked) selectedItems.add(i.itemId);
-                    else selectedItems.delete(i.itemId);
+                    if (checkbox.checked) {
+                        selectedItems.add(i.itemId);
+                    } else {
+                        selectedItems.delete(i.itemId);
+                        itemPriceRanges.delete(i.itemId); // 取消選取時，清除對應價格
+                    }
                 });
 
                 label.appendChild(checkbox);
@@ -340,7 +509,7 @@
             });
         });
 
-        /** ================== Step3/4：載入城市/行政區 ================== */
+        /** ================== Step3/4/5：載入城市/行政區 ================== */
         async function loadCities(intoSelectId) {
             try {
                 const res = await fetch(`${API_BASE}/api/Location/cities`);
@@ -389,6 +558,7 @@
             // 初始化狀態
             selectedMethods.clear();
             // 若需要也可清空 selectedItems：selectedItems.clear();
+            itemPriceRanges.clear();
             stepHistory = [];
             pushHistory(STEP.CATEGORY);
             showStep(STEP.CATEGORY);
@@ -403,10 +573,26 @@
         });
 
         document.getElementById("nextStep").addEventListener("click", () => {
-            // 在 Step2 先收集勾選的服務方式
+            // Step1：需至少選一個項目
+            if (currentStep === STEP.CATEGORY) {
+                if (selectedItems.size === 0) {
+                    alert("請先勾選至少一個服務項目");
+                    return;
+                }
+            }
+
+            // Step2：驗證價格
+            if (currentStep === STEP.PRICE) {
+                if (!validatePriceStep()) {
+                    alert("請為每個已勾選項目填入正確的最低價與最高價（最高價需 ≥ 最低價，且不可小於 0）");
+                    return;
+                }
+            }
+
+            // Step3：先收集勾選的服務方式
             if (currentStep === STEP.METHOD) {
                 selectedMethods.clear();
-                document.querySelectorAll("#step2 .method-check:checked").forEach(cb => selectedMethods.add(cb.value));
+                document.querySelectorAll("#step3 .method-check:checked").forEach(cb => selectedMethods.add(cb.value));
                 if (onlyOnlineSelected()) { finish(); return; }
             }
 

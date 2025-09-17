@@ -14,18 +14,26 @@ public class BossServiceRepo : IBossServiceRepo
         _tx = tx;
     }
 
-    public async Task ReplaceItemsAsync(Guid userId, List<Guid> itemIds, CancellationToken ct)
+    public async Task ReplaceItemsAsync(Guid userId, List<ItemPriceRangeDto> items, CancellationToken ct)
     {
-        await _conn.ExecuteAsync("DELETE FROM boss_service_item WHERE user_id=@userId", new { userId }, _tx);
+        await _conn.ExecuteAsync("DELETE FROM boss_service_item WHERE user_id = @userId", new { userId }, _tx);
 
-        foreach (var itemId in itemIds)
+        foreach (var item in items)
         {
             await _conn.ExecuteAsync(@"
-                INSERT INTO boss_service_item (id, user_id, item_id, created_at)
-                VALUES (gen_random_uuid(), @userId, @itemId, now())",
-                new { userId, itemId }, _tx);
+            INSERT INTO boss_service_item (id, user_id, item_id, min_price, max_price, created_at)
+            VALUES (gen_random_uuid(), @userId, @ItemId, @MinPrice, @MaxPrice, now())",
+                new
+                {
+                    userId,
+                    item.ItemId,
+                    item.MinPrice,
+                    item.MaxPrice
+                },
+                _tx);
         }
     }
+
 
     public async Task ReplaceMethodsAsync(Guid userId, List<string> methods, CancellationToken ct)
     {
