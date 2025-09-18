@@ -17,6 +17,8 @@
 						<!-- 已登入：顯示錢包餘額 + DisplayName + 登出 -->
 						@if (User.Identity?.IsAuthenticated ?? false)
 						{
+						<input type="hidden" id="currentUserId"
+							   value="@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value" />
 							<div id="wallet-badges" class="d-flex gap-2 me-2">
 								<span class="badge bg-warning text-dark">Gold: @ViewBag.GoldBalance</span>
 								<span class="badge bg-secondary">Silver: @ViewBag.SilverBalance</span>
