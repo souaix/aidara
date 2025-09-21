@@ -8,15 +8,11 @@ namespace Backend.Api.Controllers
     [Route("api/[controller]")]
     public class BossServicesController : ControllerBase
     {
-        private readonly IServiceRepo _serviceRepo;
-        private readonly IUserServiceRepo _userServiceRepo;
-        private readonly IServiceStatService _statService;
+        private readonly IUnitOfWork _uow;
 
-        public BossServicesController(IServiceRepo serviceRepo, IUserServiceRepo userServiceRepo, IServiceStatService statService)
+        public BossServicesController(IUnitOfWork uow)
         {
-            _serviceRepo = serviceRepo;
-            _userServiceRepo = userServiceRepo;
-            _statService = statService;
+            _uow = uow;
         }
 
         /// <summary>
@@ -25,7 +21,8 @@ namespace Backend.Api.Controllers
         [HttpGet("categories")]
         public async Task<ActionResult<List<ServiceCategoryVm>>> GetCategories(CancellationToken ct)
         {
-            var categories = await _serviceRepo.GetAllCategoriesAsync(ct);
+            var repo = _uow.CreateServiceRepo();
+            var categories = await repo.GetAllCategoriesAsync(ct);
             return Ok(categories);
         }
 
@@ -35,7 +32,8 @@ namespace Backend.Api.Controllers
         [HttpGet("user-services/{userId:guid}")]
         public async Task<ActionResult<List<UserServiceItemVm>>> GetUserServices(Guid userId, CancellationToken ct)
         {
-            var items = await _userServiceRepo.GetUserServicesAsync(userId, ct);
+            var repo = _uow.CreateUserServiceRepo();
+            var items = await repo.GetUserServicesAsync(userId, ct);
             return Ok(items);
         }
 
@@ -45,8 +43,20 @@ namespace Backend.Api.Controllers
         [HttpPost("user-services/{userId:guid}")]
         public async Task<IActionResult> UpdateUserServices(Guid userId, [FromBody] List<Guid> itemIds, CancellationToken ct)
         {
-            await _userServiceRepo.UpdateUserServicesAsync(userId, itemIds, ct);
-            return NoContent();
+            await _uow.BeginAsync(ct);
+            try
+            {
+                var repo = _uow.CreateUserServiceRepo();
+                await repo.UpdateUserServicesAsync(userId, itemIds, ct);
+
+                await _uow.CommitAsync(ct);
+                return NoContent();
+            }
+            catch
+            {
+                await _uow.RollbackAsync();
+                throw;
+            }
         }
 
         /// <summary>
@@ -55,8 +65,36 @@ namespace Backend.Api.Controllers
         [HttpGet("stats/{itemId:guid}")]
         public async Task<ActionResult<List<ServiceStatVm>>> GetServiceStats(Guid itemId, CancellationToken ct)
         {
-            var stats = await _statService.GetServiceStatsAsync(itemId, ct);
+            var repo = _uow.CreateServiceStatRepo();
+            var stats = await repo.GetServiceStatsAsync(itemId, ct);
             return Ok(stats);
+        }
+
+        /// <summary>
+        /// 取得指定地區的店家清單
+        /// </summary>
+        [HttpGet("stores/{itemId:guid}")]
+        public async Task<ActionResult<List<StoreVm>>> GetStoresByRegion(
+            Guid itemId,
+            [FromQuery] string cityId,
+            [FromQuery] string? districtId,
+            CancellationToken ct)
+        {
+            var repo = _uow.CreateBossStoreRepo();
+            var stores = await repo.GetStoresByRegionAsync(itemId, cityId, districtId, ct);
+            return Ok(stores);
+        }
+
+        /// <summary>
+        /// 取得單一商家的詳細資訊 (問卷結果 + 自定義 Quill 內容)
+        /// </summary>
+        [HttpGet("store/{userId:guid}")]
+        public async Task<ActionResult<StoreDetailVm>> GetStoreDetail(Guid userId, CancellationToken ct)
+        {
+            var repo = _uow.CreateBossStoreRepo();
+            var detail = await repo.GetStoreDetailAsync(userId, ct);
+            if (detail is null) return NotFound();
+            return Ok(detail);
         }
     }
 }

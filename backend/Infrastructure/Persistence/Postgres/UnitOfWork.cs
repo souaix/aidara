@@ -1,15 +1,22 @@
 ﻿using Backend.Application.Ports;
 using Backend.Infrastructure.Persistence.Postgres;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
 public sealed class UnitOfWork : IUnitOfWork
 {
     private readonly NpgsqlDataSource _ds;
+    private readonly IServiceProvider _sp;
     private NpgsqlConnection? _conn;
     private NpgsqlTransaction? _tx;
 
-    public UnitOfWork(NpgsqlDataSource ds) => _ds = ds;
+    public UnitOfWork(NpgsqlDataSource ds, IServiceProvider sp)
+    {
+        _ds = ds;
+        _sp = sp;
+    }
 
+    // Transaction：只有寫入時才會呼叫
     public async Task BeginAsync(CancellationToken ct)
     {
         _conn = (NpgsqlConnection)await _ds.OpenConnectionAsync(ct);
@@ -25,10 +32,14 @@ public sealed class UnitOfWork : IUnitOfWork
         await (_conn?.DisposeAsync() ?? ValueTask.CompletedTask);
     }
 
+    // ========== Transaction 內部使用的 Repo ==========
     public IUserRepo CreateUserRepo() => new UserRepo(_conn!, _tx);
-
     public IWalletRepo CreateWalletRepo() => new WalletRepo(_conn!, _tx);
-
     public IBossServiceRepo CreateBossServiceRepo() => new BossServiceRepo(_conn!, _tx);
 
+    // ========== 只讀或可由 DI 控制 Mock/Real 的 Repo ==========
+    public IBossStoreRepo CreateBossStoreRepo() => _sp.GetRequiredService<IBossStoreRepo>();
+    public IServiceRepo CreateServiceRepo() => _sp.GetRequiredService<IServiceRepo>();
+    public IUserServiceRepo CreateUserServiceRepo() => _sp.GetRequiredService<IUserServiceRepo>();
+    public IServiceStatRepo CreateServiceStatRepo() => _sp.GetRequiredService<IServiceStatRepo>();
 }

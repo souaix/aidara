@@ -40,7 +40,11 @@ builder.Services.AddScoped<IListingRepo, ListingRepo>();
 
 // UnitOfWork：每個 scope 建立一個交易上下文
 builder.Services.AddScoped<IUnitOfWork>(sp =>
-    new UnitOfWork(sp.GetRequiredService<NpgsqlDataSource>()));
+    new UnitOfWork(
+        sp.GetRequiredService<NpgsqlDataSource>(),
+        sp  // 把 ServiceProvider 傳進去
+    ));
+
 
 builder.Services.AddScoped<Func<IUnitOfWork>>(sp => () => sp.GetRequiredService<IUnitOfWork>());
 
@@ -67,12 +71,17 @@ if (builder.Environment.IsDevelopment())
 	builder.Services.AddSingleton<IServiceStatRepo, MockServiceStatRepo>();
 	builder.Services.AddScoped<IUserServiceRepo, MockUserServiceRepo>();
 	builder.Services.AddScoped<IServiceRepo, MockServiceRepo>();
+    builder.Services.AddScoped<IBossStoreRepo, MockBossStoreRepo>();
+
+
 }
 else
 {
 	builder.Services.AddScoped<IServiceStatRepo, ServiceStatRepo>();
 	builder.Services.AddScoped<IUserServiceRepo, UserServiceRepo>();
 	builder.Services.AddScoped<IServiceRepo, ServiceRepo>();
+    builder.Services.AddScoped<IBossStoreRepo, BossStoreRepo>();
+
 }
 
 

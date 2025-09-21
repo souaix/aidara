@@ -6,7 +6,24 @@ public interface IUnitOfWork : IAsyncDisposable
     Task CommitAsync(CancellationToken ct);
     Task RollbackAsync();
 
+    // 會員 / 使用者
+    IUserRepo CreateUserRepo();
+
+    // 錢包
     IWalletRepo CreateWalletRepo();
-    IUserRepo CreateUserRepo();              // 你原本有
-    IBossServiceRepo CreateBossServiceRepo(); // ✅ 新增
+
+    // 老闆服務設定
+    IBossServiceRepo CreateBossServiceRepo();
+
+    // 老闆商店（清單、詳細資訊）
+    IBossStoreRepo CreateBossStoreRepo();
+
+    // 服務分類 / 項目
+    IServiceRepo CreateServiceRepo();
+
+    // 使用者選過的服務項目
+    IUserServiceRepo CreateUserServiceRepo();
+
+    // 統計 (各縣市商家數)
+    IServiceStatRepo CreateServiceStatRepo();
 }

@@ -1,66 +1,171 @@
 ﻿@model Frontend.Web.ViewModels.CategoryTilesVm
 
-
 @if (Model.Pics.Count == 0)
 {
-	<div class="alert alert-light border d-flex align-items-center" role="alert">
-		<div class="me-2">😅</div>
-		<div>「@Model.Cat」分類的圖片還在準備中，稍後上架。</div>
-	</div>
+    <div class="alert alert-light border d-flex align-items-center" role="alert">
+        <div class="me-2">😅</div>
+        <div>「@Model.Cat」分類的圖片還在準備中，稍後上架。</div>
+    </div>
 }
 else
 {
-	<div class="row g-3">
-		@for (int i = 0; i < Model.Pics.Count; i++)
-		{
-			<div class="col-12 col-sm-6 col-lg-3">
-				<a class="card card-tile text-white text-decoration-none service-link"
-				   href="javascript:void(0);"
-				   data-item-id="@Model.ItemIds[i]"
-				   data-category="@Model.Cat">
-					<div class="ratio ratio-16x9">
-						<img src="@Url.Content(Model.Pics[i])" class="object-fit-cover rounded" alt="@Model.Cat @(i + 1)" />
-					</div>
-					<div class="tile-caption"><span>@Model.Cat @(i + 1)</span></div>
-				</a>
-
-			</div>
-		}
-	</div>
+    <div class="row g-3">
+        @for (int i = 0; i < Model.Pics.Count; i++)
+        {
+            <div class="col-12 col-sm-6 col-lg-3">
+                <a class="card card-tile text-white text-decoration-none service-link"
+                   href="javascript:void(0);"
+                   data-item-id="@Model.ItemIds[i]"
+                   data-category="@Model.Cat">
+                    <div class="ratio ratio-16x9">
+                        <img src="@Url.Content(Model.Pics[i])" class="object-fit-cover rounded" alt="@Model.Cat @(i + 1)" />
+                    </div>
+                    <div class="tile-caption"><span>@Model.Cat @(i + 1)</span></div>
+                </a>
+            </div>
+        }
+    </div>
 }
+
 <script>
-	document.addEventListener("DOMContentLoaded", function () {
-		document.querySelectorAll(".service-link").forEach(el => {
-			el.addEventListener("click", async function (e) {
-				e.preventDefault();
-				const itemId = this.dataset.itemId;
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".service-link").forEach(el => {
+        el.addEventListener("click", async (e) => {
+          e.preventDefault();
+          const itemId = el.dataset.itemId;
+          const res = await fetch(`https://localhost:7030/api/BossServices/stats/${itemId}`);
+          if (!res.ok) { alert("讀取統計失敗"); return; }
+          const stats = await res.json();
 
-				// 呼叫 API (MVP 直接回傳 JSON)
-				// const res = await fetch(`/api/BossServices/stats/${itemId}`);
-				const res = await fetch(`https://localhost:7030/api/BossServices/stats/${itemId}`);
+          const container = document.getElementById("tiles-container");
+          const statsHtml = renderStats(itemId, stats);
+          container.innerHTML = statsHtml;
+          bindStatsEvents(container, statsHtml);
+        });
+      });
+    });
 
-				const stats = await res.json();
+    function renderStats(itemId, stats){
+      return `
+        <h5 class="mb-3">服務項目 ${itemId} 的縣市分布</h5>
+        <div class="row">
+          ${stats.map(stat => `
+            <div class="col-6 col-md-4 col-lg-3 mb-3">
+              <div class="card h-100 text-center region-card"
+                   data-item-id="${itemId}"
+                   data-city-id="${stat.cityId}"
+                   data-district-id="${stat.districtId ?? ''}">
+                <div class="card-body">
+                  <h5 class="card-title">${stat.cityId}</h5>
+                  <p class="card-text">${stat.districtId ?? '-'}</p>
+                  <span class="badge bg-primary">${stat.storeCount} 家店</span>
+                </div>
+              </div>
+            </div>
+          `).join("")}
+        </div>`;
+    }
 
-				// 把結果渲染到右側 tiles-container
-				const container = document.getElementById("tiles-container");
+    function bindStatsEvents(container, statsHtml){
+      container.querySelectorAll(".region-card").forEach(card => {
+        card.addEventListener("click", async () => {
+          const itemId = card.dataset.itemId;
+          const cityId = card.dataset.cityId;
+          const districtId = card.dataset.districtId || "";
 
-				container.innerHTML = `
-				  <div class="row">
-					${stats.map(stat => `
-					  <div class="col-6 col-md-4 col-lg-3 mb-3">
-						<div class="card h-100 text-center">
-						  <div class="card-body">
-							<h5 class="card-title">${stat.cityId}</h5>
-							<p class="card-text">${stat.districtId ?? '-'}</p>
-							<span class="badge bg-primary">${stat.storeCount} 家店</span>
-						  </div>
-						</div>
-					  </div>
-					`).join("")}
-				  </div>
-				`;
+          const res2 = await fetch(`https://localhost:7030/api/BossServices/stores/${itemId}?cityId=${encodeURIComponent(cityId)}&districtId=${encodeURIComponent(districtId)}`);
+          if (!res2.ok) { alert("讀取商家清單失敗"); return; }
+          const stores = await res2.json();
 
-			});
-		});
-	});
+          const storesHtml = renderStores(cityId, districtId, stores);
+          container.innerHTML = storesHtml;
+          bindStoresEvents(container, storesHtml, statsHtml);
+        });
+      });
+    }
+
+    function renderStores(cityId, districtId, stores){
+      return `
+        <button class="btn btn-link mb-2" id="back-to-stats">← 返回縣市統計</button>
+        <h5 class="mb-3">${cityId} ${districtId || ""} 的商家清單</h5>
+        <div class="row g-3">
+          ${stores.map(s => `
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="card h-100 store-card" data-user-id="${s.userId}">
+                <div class="card-body">
+                  <div class="d-flex align-items-center mb-2">
+                    <img src="${s.avatarUrl || '/images/default-avatar.png'}" class="rounded-circle me-2" width="40" height="40" />
+                    <div>
+                      <div class="fw-bold">${s.displayName}</div>
+                      <div class="text-muted small">${s.itemName}</div>
+                    </div>
+                  </div>
+                  <div class="small"><span class="text-muted">服務方式：</span>${(s.methods || []).join(", ") || "-"}</div>
+                  <div class="small"><span class="text-muted">評分：</span>⭐ ${Number(s.avgScore).toFixed(1)}</div>
+                </div>
+              </div>
+            </div>
+          `).join("")}
+        </div>`;
+    }
+
+    function bindStoresEvents(container, storesHtml, statsHtml){
+      // back to stats
+      container.querySelector("#back-to-stats").addEventListener("click", () => {
+        container.innerHTML = statsHtml;
+        bindStatsEvents(container, statsHtml);
+      });
+
+      // store detail
+      container.querySelectorAll(".store-card").forEach(card => {
+        card.addEventListener("click", async () => {
+          const userId = card.dataset.userId;
+          const res3 = await fetch(`https://localhost:7030/api/BossServices/store/${userId}`);
+          if (!res3.ok) { alert("讀取商家詳細失敗"); return; }
+          const detail = await res3.json();
+
+          const detailHtml = renderStoreDetail(detail);
+          container.innerHTML = detailHtml;
+
+          // back to stores
+          container.querySelector("#back-to-stores").addEventListener("click", () => {
+            container.innerHTML = storesHtml;
+            bindStoresEvents(container, storesHtml, statsHtml);
+          });
+          // back to stats
+          container.querySelector("#back-to-stats").addEventListener("click", () => {
+            container.innerHTML = statsHtml;
+            bindStatsEvents(container, statsHtml);
+          });
+        });
+      });
+    }
+
+    function renderStoreDetail(detail){
+      return `
+        <div class="d-flex gap-2 mb-2">
+          <button class="btn btn-sm btn-outline-secondary" id="back-to-stores">← 返回商家清單</button>
+          <button class="btn btn-sm btn-outline-secondary" id="back-to-stats">← 返回縣市統計</button>
+        </div>
+        <div class="d-flex align-items-center mb-3">
+          <img src="${detail.avatarUrl || '/images/default-avatar.png'}" class="rounded-circle me-2" width="48" height="48" />
+          <h4 class="mb-0">${detail.displayName}</h4>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-body">
+            <h5 class="card-title">問卷結果</h5>
+            <ul class="mb-0">
+              ${detail.questionnaire?.map(q => `<li><strong>${q.question}：</strong>${q.answer}</li>`).join("") || "<li class='text-muted'>尚無資料</li>"}
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">商家介紹</h5>
+            <div class="border p-3" style="min-height:200px">${detail.contentHtml || "<em class='text-muted'>尚未填寫</em>"}</div>
+          </div>
+        </div>`;
+    }
 </script>
