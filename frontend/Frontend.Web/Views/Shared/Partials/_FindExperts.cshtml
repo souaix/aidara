@@ -1,5 +1,4 @@
-﻿@* 找專家：左選單 + 右圖磚 (Ajax 切換) *@
-<section class="py-4">
+﻿<section class="py-4">
     <div class="container">
         <div class="d-flex align-items-center mb-3">
             <img src="~/images/icon-expert.svg" alt="" style="width:40px;height:40px" class="me-2">
@@ -13,9 +12,9 @@
         </div>
 
         <div class="row">
-            <!-- 左側分類清單 -->
-            <aside class="col-12 col-md-3 mb-4 mb-md-0">
-                <ul class="list-unstyled find-list" id="find-cat-list">
+            <!-- 左側分類清單 (桌機顯示) -->
+            <aside class="col-12 col-md-3 mb-3 mb-md-0">
+                <ul class="list-unstyled find-list d-none d-md-block" id="find-cat-list">
                     <li><a class="find-link active" href="#" data-cat="interior">室內裝潢</a></li>
                     <li><a class="find-link" href="#" data-cat="cleaning">清潔服務</a></li>
                     <li><a class="find-link" href="#" data-cat="design">設計視覺</a></li>
@@ -27,22 +26,80 @@
                     <li><a class="find-link" href="#" data-cat="marketing">行銷企劃</a></li>
                     <li><a class="find-link" href="#" data-cat="writing">編輯寫作</a></li>
                 </ul>
+
+                <!-- 手機橫向選單 -->
+                <div class="d-flex d-md-none overflow-auto gap-2 pb-2" id="find-cat-scroll">
+                    <a class="find-link active flex-shrink-0" href="#" data-cat="interior">室內裝潢</a>
+                    <a class="find-link flex-shrink-0" href="#" data-cat="cleaning">清潔服務</a>
+                    <a class="find-link flex-shrink-0" href="#" data-cat="design">設計視覺</a>
+                    <a class="find-link flex-shrink-0" href="#" data-cat="wedding">婚禮服務</a>
+                    <a class="find-link flex-shrink-0" href="#" data-cat="tutor">家教補習</a>
+                    <a class="find-link flex-shrink-0" href="#" data-cat="repair">居家維修</a>
+                    <a class="find-link flex-shrink-0" href="#" data-cat="photo">攝影錄影</a>
+                    <a class="find-link flex-shrink-0" href="#" data-cat="fitness">健康健身</a>
+                    <a class="find-link flex-shrink-0" href="#" data-cat="marketing">行銷企劃</a>
+                    <a class="find-link flex-shrink-0" href="#" data-cat="writing">編輯寫作</a>
+                </div>
+
             </aside>
 
-            <!-- 右側圖磚容器：初次載入就放 interior -->
+            <!-- 右側圖磚容器 -->
             <div class="col-12 col-md-9">
                 <div id="tiles-container">
-                    @await Html.PartialAsync("~/Views/Shared/Partials/_CategoryTiles.cshtml",
-                    new Frontend.Web.ViewModels.CategoryTilesVm(
-                    "interior",
-                    Enumerable.Range(1, 8).Select(i => $"~/images/experts/interior/{i:D2}.jpg"),
-                    Enumerable.Range(1, 8).Select(i => Guid.NewGuid()) // ⚠️ 這裡要改成真實的 service_item.item_id
-                    ))
-
+                    @await Html.PartialAsync(
+                    "~/Views/Shared/Partials/_CategoryTiles.cshtml",
+                                        new Frontend.Web.ViewModels.CategoryTilesVm(
+                                        "interior",
+                                        Enumerable.Range(1, 8).Select(i => $"~/images/experts/interior/{i:D2}.jpg"),
+                                        Enumerable.Range(1, 8).Select(i => Guid.NewGuid())
+                                        )
+                                        )
                 </div>
             </div>
         </div>
     </div>
-
-
 </section>
+
+<style>
+    /* 手機橫向選單按鈕 */
+    #find-cat-scroll .find-link {
+        border: 1px solid #ccc;
+        background-color: #fff;
+        color: #333;
+        border-radius: .25rem;
+        padding: .375rem .75rem;
+        text-decoration: none;
+    }
+
+        /* 被選中的按鈕：增加陰影 */
+        #find-cat-scroll .find-link.active {
+            box-shadow: 0 0 6px rgba(0,0,0,0.3);
+        }
+
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const links = document.querySelectorAll(".find-link");
+
+        links.forEach(link => {
+            link.addEventListener("click", async (e) => {
+                e.preventDefault();
+
+                // 切換 active 樣式 (桌機+手機同步)
+                document.querySelectorAll(".find-link").forEach(l => l.classList.remove("active"));
+                link.classList.add("active");
+
+                const cat = link.dataset.cat;
+
+                const res = await fetch(`/Browse/CategoryTiles?cat=${encodeURIComponent(cat)}`);
+                if (!res.ok) {
+                    alert("讀取分類失敗");
+                    return;
+                }
+                const html = await res.text();
+                document.getElementById("tiles-container").innerHTML = html;
+            });
+        });
+    });
+</script>
