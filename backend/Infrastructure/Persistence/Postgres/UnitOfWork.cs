@@ -37,9 +37,14 @@ public sealed class UnitOfWork : IUnitOfWork
     public IWalletRepo CreateWalletRepo() => new WalletRepo(_conn!, _tx);
     public IBossServiceRepo CreateBossServiceRepo() => new BossServiceRepo(_conn!, _tx);
 
+    public ICustomerServiceRequestRepo CreateCustomerServiceRequestRepo() => new CustomerServiceRequestRepo(_conn!, _tx);
+
     // ========== 只讀或可由 DI 控制 Mock/Real 的 Repo ==========
     public IBossStoreRepo CreateBossStoreRepo() => _sp.GetRequiredService<IBossStoreRepo>();
     public IServiceRepo CreateServiceRepo() => _sp.GetRequiredService<IServiceRepo>();
     public IUserServiceRepo CreateUserServiceRepo() => _sp.GetRequiredService<IUserServiceRepo>();
     public IServiceStatRepo CreateServiceStatRepo() => _sp.GetRequiredService<IServiceStatRepo>();
+
+
 }
+

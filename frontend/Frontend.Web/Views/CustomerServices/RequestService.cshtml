@@ -1,0 +1,210 @@
+﻿@using System.Security.Claims
+@inject IConfiguration Cfg
+@{
+    ViewData["Title"] = "徵求服務";
+    Layout = "_Layout";
+    var apiBase = Cfg["BackendApi:BaseUrl"] ?? "http://localhost:7030";
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+}
+
+<div class="container mt-5" id="req-root" data-api="@apiBase" data-userid="@userId">
+    <h1 class="text-center mb-3">徵求服務</h1>
+    <p class="text-center text-muted mb-4">填寫需求，我們會幫你媒合合適的專家</p>
+
+    <div class="text-center">
+        <!-- 用 data-bs-* 觸發 modal，避免 JS 沒掛上導致按鈕無效 -->
+        <button type="button" class="btn btn-success btn-lg"
+                data-bs-toggle="modal" data-bs-target="#requestModal">
+            我要徵求
+        </button>
+    </div>
+</div>
+
+<!-- Modal：和 BeABoss 相同尺寸/樣式 -->
+<div class="modal fade" id="requestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">徵求服務問卷</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Step 1 -->
+                <div id="step1">
+                    <h4 class="mb-3">Step 1：選擇服務分類 / 中分類 / 項目</h4>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4"><div id="catList" class="list-group"></div></div>
+                        <div class="col-12 col-md-4"><div id="subcatList" class="list-group"></div></div>
+                        <div class="col-12 col-md-4"><div id="itemList" class="list-group"></div></div>
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button class="btn btn-primary" id="toStep2" disabled>下一步</button>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div id="step2" class="d-none">
+                    <h4 class="mb-3">Step 2：可接受的價格區間</h4>
+                    <div class="row g-2">
+                        <div class="col-6"><input type="number" class="form-control" id="priceMin" placeholder="下限（可空白）"></div>
+                        <div class="col-6"><input type="number" class="form-control" id="priceMax" placeholder="上限（可空白）"></div>
+                    </div>
+                    <div class="mt-3 d-flex justify-content-between">
+                        <button class="btn btn-outline-secondary" id="back1">上一步</button>
+                        <button class="btn btn-primary" id="toStep3">下一步</button>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div id="step3" class="d-none">
+                    <h4 class="mb-3">Step 3：選擇服務方式（可多選）</h4>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" value="上門服務" id="m1"><label class="form-check-label" for="m1">上門服務</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" value="固定據點" id="m2"><label class="form-check-label" for="m2">固定據點</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" value="線上服務" id="m3"><label class="form-check-label" for="m3">線上服務</label></div>
+                    <div class="mt-3 d-flex justify-content-between">
+                        <button class="btn btn-outline-secondary" id="back2">上一步</button>
+                        <button class="btn btn-success" id="submit">送出</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function(){
+          const root   = document.getElementById('req-root');
+          const API    = root.dataset.api || '';
+          const USERID = root.dataset.userid || '';
+
+          if(!USERID){
+            alert('請先登入再使用徵求服務。');
+            window.location.href = '/Account/Login';
+            return;
+          }
+
+          const modalEl = document.getElementById('requestModal');
+          let initialized = false; // 只綁一次事件與資料
+
+          // 每次開啟前都重置 UI（避免上次殘留）
+          modalEl.addEventListener('show.bs.modal', resetWizard);
+
+          // 第一次開啟後初始化（fetch 類別、綁事件）
+          modalEl.addEventListener('shown.bs.modal', () => {
+            if (!initialized) { initQuestionnaire(); initialized = true; }
+          });
+
+          function resetWizard(){
+            toggle(document.getElementById('step1'), true);
+            toggle(document.getElementById('step2'), false);
+            toggle(document.getElementById('step3'), false);
+
+            document.getElementById('toStep2').disabled = true;
+            document.getElementById('catList').innerHTML    = '<div class="text-muted px-2">載入中…</div>';
+            document.getElementById('subcatList').innerHTML = '<div class="text-muted px-2">請先選擇大分類</div>';
+            document.getElementById('itemList').innerHTML   = '<div class="text-muted px-2">請先選擇中分類</div>';
+            const pm = document.getElementById('priceMin'), px = document.getElementById('priceMax');
+            if(pm) pm.value = ''; if(px) px.value = '';
+            ['m1','m2','m3'].forEach(id => { const el=document.getElementById(id); if(el) el.checked=false; });
+          }
+
+          function initQuestionnaire(){
+            let categories=[], selectedCat=null, selectedSubcat=null, selectedItemId=null;
+
+            fetch(`${API}/api/BossServices/categories`)
+              .then(r => r.json())
+              .then(cats => { categories = cats || []; renderCats(); })
+              .catch(() => document.getElementById('catList').innerHTML = '<div class="text-danger px-2">載入失敗</div>');
+
+            function renderCats(){
+              const list = document.getElementById('catList');
+              if (!categories.length) { list.innerHTML = '<div class="text-muted px-2">目前尚無分類</div>'; return; }
+              list.innerHTML = categories.map(c => `
+                <button type="button"
+                  class="list-group-item list-group-item-action ${selectedCat?.categoryId===c.categoryId?'active':''}"
+                  data-id="${c.categoryId}">${escapeHtml(c.name)}</button>
+              `).join('');
+              list.querySelectorAll('button').forEach(btn => {
+                btn.onclick = () => {
+                  selectedCat = categories.find(c => c.categoryId === btn.dataset.id);
+                  selectedSubcat = null; selectedItemId = null;
+                  renderCats(); renderSubcats(); renderItems();
+                  document.getElementById('toStep2').disabled = true;
+                };
+              });
+            }
+
+            function renderSubcats(){
+              const list = document.getElementById('subcatList');
+              if (!selectedCat) { list.innerHTML = '<div class="text-muted px-2">請先選擇大分類</div>'; return; }
+              const subs = selectedCat.subcategories || [];
+              if (!subs.length) { list.innerHTML = '<div class="text-muted px-2">此分類尚無中分類</div>'; return; }
+              list.innerHTML = subs.map(s => `
+                <button type="button"
+                  class="list-group-item list-group-item-action ${selectedSubcat?.subcategoryId===s.subcategoryId?'active':''}"
+                  data-id="${s.subcategoryId}">${escapeHtml(s.name)}</button>
+              `).join('');
+              list.querySelectorAll('button').forEach(btn => {
+                btn.onclick = () => {
+                  selectedSubcat = (selectedCat.subcategories||[]).find(s => s.subcategoryId === btn.dataset.id);
+                  selectedItemId = null;
+                  renderSubcats(); renderItems();
+                  document.getElementById('toStep2').disabled = true;
+                };
+              });
+            }
+
+            function renderItems(){
+              const list = document.getElementById('itemList');
+              if (!selectedSubcat) { list.innerHTML = '<div class="text-muted px-2">請先選擇中分類</div>'; return; }
+              const items = selectedSubcat.items || [];
+              if (!items.length) { list.innerHTML = '<div class="text-muted px-2">此中分類尚無項目</div>'; return; }
+              list.innerHTML = items.map(i => `
+                <label class="list-group-item d-flex align-items-center">
+                  <input class="form-check-input me-2" type="radio" name="serviceItem" value="${i.itemId}">
+                  <span>${escapeHtml(i.name)}</span>
+                </label>
+              `).join('');
+              list.querySelectorAll('input[name=serviceItem]').forEach(r => {
+                r.onchange = () => {
+                  selectedItemId = r.value;
+                  document.getElementById('toStep2').disabled = !selectedItemId;
+                };
+              });
+            }
+
+            // 步驟切換
+            const s1=document.getElementById('step1'), s2=document.getElementById('step2'), s3=document.getElementById('step3');
+            document.getElementById('toStep2').onclick = () => { toggle(s1,false); toggle(s2,true); };
+            document.getElementById('back1').onclick   = () => { toggle(s2,false); toggle(s1,true); };
+            document.getElementById('toStep3').onclick = () => { toggle(s2,false); toggle(s3,true); };
+            document.getElementById('back2').onclick   = () => { toggle(s3,false); toggle(s2,true); };
+
+            // 送出
+            document.getElementById('submit').onclick = () => {
+              if (!selectedItemId) { alert('請先在 Step 1 選擇服務項目'); return; }
+              const priceMin = numOrNull(document.getElementById('priceMin').value);
+              const priceMax = numOrNull(document.getElementById('priceMax').value);
+              if (priceMin!=null && priceMax!=null && priceMin>priceMax) { alert('下限不可大於上限'); return; }
+              const methods=[]; ['m1','m2','m3'].forEach(id=>{ const el=document.getElementById(id); if(el&&el.checked) methods.push(el.value); });
+              if (!methods.length) { alert('請至少勾選一種服務方式'); return; }
+
+              const dto = { userId: USERID, itemId: selectedItemId, priceMin, priceMax, methods };
+              fetch(`${API}/api/CustomerServiceRequest`, {
+                method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dto)
+              }).then(r=>{
+                if(r.ok){ alert('需求已送出'); const m = bootstrap.Modal.getInstance(modalEl); m?.hide(); }
+                else { r.text().then(t=>alert('送出失敗\n'+t)); }
+              }).catch(err=>alert('送出失敗：'+err));
+            };
+          }
+
+          // helpers
+          function toggle(el, show){ el.classList.toggle('d-none', !show); }
+          function numOrNull(v){ if(v===''||v==null) return null; const n=parseInt(v,10); return Number.isNaN(n)?null:n; }
+          function escapeHtml(s){ return (s??'').replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+        })();
+    </script>
+}

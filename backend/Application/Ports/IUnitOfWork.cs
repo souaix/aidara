@@ -26,4 +26,6 @@ public interface IUnitOfWork : IAsyncDisposable
 
     // 統計 (各縣市商家數)
     IServiceStatRepo CreateServiceStatRepo();
+
+    ICustomerServiceRequestRepo CreateCustomerServiceRequestRepo();
 }
