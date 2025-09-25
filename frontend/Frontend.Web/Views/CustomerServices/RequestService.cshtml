@@ -183,22 +183,48 @@
             document.getElementById('back2').onclick   = () => { toggle(s3,false); toggle(s2,true); };
 
             // 送出
-            document.getElementById('submit').onclick = () => {
-              if (!selectedItemId) { alert('請先在 Step 1 選擇服務項目'); return; }
-              const priceMin = numOrNull(document.getElementById('priceMin').value);
-              const priceMax = numOrNull(document.getElementById('priceMax').value);
-              if (priceMin!=null && priceMax!=null && priceMin>priceMax) { alert('下限不可大於上限'); return; }
-              const methods=[]; ['m1','m2','m3'].forEach(id=>{ const el=document.getElementById(id); if(el&&el.checked) methods.push(el.value); });
-              if (!methods.length) { alert('請至少勾選一種服務方式'); return; }
+        // 送出
+        document.getElementById('submit').onclick = () => {
+          if (!selectedItemId) {
+            alert('請先在 Step 1 選擇服務項目'); return;
+          }
+          const priceMin = numOrNull(document.getElementById('priceMin').value);
+          const priceMax = numOrNull(document.getElementById('priceMax').value);
+          if (priceMin != null && priceMax != null && priceMin > priceMax) {
+            alert('下限不可大於上限'); return;
+          }
 
-              const dto = { userId: USERID, itemId: selectedItemId, priceMin, priceMax, methods };
-              fetch(`${API}/api/CustomerServiceRequest`, {
-                method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dto)
-              }).then(r=>{
-                if(r.ok){ alert('需求已送出'); const m = bootstrap.Modal.getInstance(modalEl); m?.hide(); }
-                else { r.text().then(t=>alert('送出失敗\n'+t)); }
-              }).catch(err=>alert('送出失敗：'+err));
-            };
+          const methods = [];
+          ['m1','m2','m3'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.checked) methods.push(el.value);
+          });
+          if (!methods.length) { alert('請至少勾選一種服務方式'); return; }
+
+          const dto = {
+            userId: USERID,
+            itemId: selectedItemId,
+            priceMin,
+            priceMax,
+            methods
+          };
+
+          // 🔹 改呼叫新的 CustomerServiceQuestionnaire API
+          fetch(`${API}/api/CustomerServiceQuestionnaire`, {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify(dto)
+          }).then(r => {
+            if (r.ok) {
+              alert('需求已送出');
+              const m = bootstrap.Modal.getInstance(modalEl);
+              m?.hide();
+            } else {
+              r.text().then(t => alert('送出失敗\n' + t));
+            }
+          }).catch(err => alert('送出失敗：' + err));
+        };
+
           }
 
           // helpers

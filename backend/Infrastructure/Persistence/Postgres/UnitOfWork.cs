@@ -45,6 +45,9 @@ public sealed class UnitOfWork : IUnitOfWork
     public IUserServiceRepo CreateUserServiceRepo() => _sp.GetRequiredService<IUserServiceRepo>();
     public IServiceStatRepo CreateServiceStatRepo() => _sp.GetRequiredService<IServiceStatRepo>();
 
+    public ICustomerServiceQuestionnaireRepo CreateCustomerServiceQuestionnaireRepo()=> new CustomerServiceQuestionnaireRepo(_conn!, _tx);
+
+
 
 }
 

@@ -28,4 +28,7 @@ public interface IUnitOfWork : IAsyncDisposable
     IServiceStatRepo CreateServiceStatRepo();
 
     ICustomerServiceRequestRepo CreateCustomerServiceRequestRepo();
+
+    ICustomerServiceQuestionnaireRepo CreateCustomerServiceQuestionnaireRepo();
+
 }
