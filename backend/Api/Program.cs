@@ -75,6 +75,7 @@ if (builder.Environment.IsDevelopment())
 	builder.Services.AddScoped<IServiceRepo, MockServiceRepo>();
     builder.Services.AddScoped<IBossStoreRepo, MockBossStoreRepo>();
     builder.Services.AddSingleton<ICustomerServiceRequestRepo, MockCustomerServiceRequestRepo>();
+    builder.Services.AddSingleton<ICustomerDemandRepo, MockCustomerDemandRepo>();
 
 }
 else
@@ -84,6 +85,7 @@ else
 	builder.Services.AddScoped<IServiceRepo, ServiceRepo>();
     builder.Services.AddScoped<IBossStoreRepo, BossStoreRepo>();
     builder.Services.AddSingleton<ICustomerServiceRequestRepo, CustomerServiceRequestRepo>();
+    builder.Services.AddSingleton<ICustomerDemandRepo, MockCustomerDemandRepo>();
 }
 
 

@@ -1,0 +1,56 @@
+﻿@{
+    ViewData["Title"] = "小老闆模式";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-3">小老闆模式：需求單瀏覽</h2>
+
+    <div id="cityList" class="row g-3">
+        <!-- 這裡載入縣市卡片 -->
+    </div>
+
+    <div id="demandList" class="mt-5 d-none">
+        <h4 id="demandTitle"></h4>
+        <div class="list-group" id="demandItems"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (async function(){
+            const res = await fetch("/api/CustomerDemand/cities");
+            const cities = await res.json();
+
+            const wrap = document.getElementById("cityList");
+            wrap.innerHTML = cities.map(c => `
+                <div class="col-6 col-md-3">
+                  <div class="card h-100 shadow-sm city-card" data-city="${c.city}">
+                    <div class="card-body text-center">
+                      <h5 class="card-title">${c.city}</h5>
+                      <p class="card-text text-muted">需求單數：${c.count}</p>
+                    </div>
+                  </div>
+                </div>
+            `).join("");
+
+            wrap.querySelectorAll(".city-card").forEach(card => {
+                card.onclick = async () => {
+                    const city = card.dataset.city;
+                    const r2 = await fetch(`/api/CustomerDemand/list/${city}`);
+                    const demands = await r2.json();
+                    document.getElementById("demandTitle").innerText = `${city} 的需求單`;
+                    const list = document.getElementById("demandItems");
+                    list.innerHTML = demands.map(d => `
+                      <a href="#" class="list-group-item list-group-item-action">
+                        <strong>${d.itemName}</strong> - ${d.priceMin||''}~${d.priceMax||''}
+                        <div class="small text-muted">${d.methods.join(", ")}</div>
+                      </a>
+                    `).join("");
+                    document.getElementById("demandList").classList.remove("d-none");
+                    window.scrollTo({ top: document.getElementById("demandList").offsetTop, behavior: 'smooth' });
+                };
+            });
+        })();
+    </script>
+}

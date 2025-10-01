@@ -8,5 +8,11 @@ namespace Frontend.Web.Controllers
         {
             return View(); // Views/CustomerServices/RequestService.cshtml
         }
+
+        public IActionResult BossMode()
+        {
+            return View();
+        }
     }
+
 }

@@ -12,7 +12,6 @@
     <p class="text-center text-muted mb-4">填寫需求，我們會幫你媒合合適的專家</p>
 
     <div class="text-center">
-        <!-- 用 data-bs-* 觸發 modal，避免 JS 沒掛上導致按鈕無效 -->
         <button type="button" class="btn btn-success btn-lg"
                 data-bs-toggle="modal" data-bs-target="#requestModal">
             我要徵求
@@ -20,7 +19,7 @@
     </div>
 </div>
 
-<!-- Modal：和 BeABoss 相同尺寸/樣式 -->
+<!-- Modal -->
 <div class="modal fade" id="requestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
@@ -28,7 +27,6 @@
                 <h5 class="modal-title">徵求服務問卷</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-
             <div class="modal-body">
                 <!-- Step 1 -->
                 <div id="step1">
@@ -86,12 +84,9 @@
           }
 
           const modalEl = document.getElementById('requestModal');
-          let initialized = false; // 只綁一次事件與資料
+          let initialized = false;
 
-          // 每次開啟前都重置 UI（避免上次殘留）
           modalEl.addEventListener('show.bs.modal', resetWizard);
-
-          // 第一次開啟後初始化（fetch 類別、綁事件）
           modalEl.addEventListener('shown.bs.modal', () => {
             if (!initialized) { initQuestionnaire(); initialized = true; }
           });
@@ -183,48 +178,39 @@
             document.getElementById('back2').onclick   = () => { toggle(s3,false); toggle(s2,true); };
 
             // 送出
-        // 送出
-        document.getElementById('submit').onclick = () => {
-          if (!selectedItemId) {
-            alert('請先在 Step 1 選擇服務項目'); return;
-          }
-          const priceMin = numOrNull(document.getElementById('priceMin').value);
-          const priceMax = numOrNull(document.getElementById('priceMax').value);
-          if (priceMin != null && priceMax != null && priceMin > priceMax) {
-            alert('下限不可大於上限'); return;
-          }
+            document.getElementById('submit').onclick = () => {
+              if (!selectedItemId) { alert('請先在 Step 1 選擇服務項目'); return; }
+              const priceMin = numOrNull(document.getElementById('priceMin').value);
+              const priceMax = numOrNull(document.getElementById('priceMax').value);
+              if (priceMin != null && priceMax != null && priceMin > priceMax) { alert('下限不可大於上限'); return; }
 
-          const methods = [];
-          ['m1','m2','m3'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el && el.checked) methods.push(el.value);
-          });
-          if (!methods.length) { alert('請至少勾選一種服務方式'); return; }
+              const methods=[]; ['m1','m2','m3'].forEach(id=>{
+                const el=document.getElementById(id);
+                if(el && el.checked) methods.push(el.value);
+              });
+              if (!methods.length) { alert('請至少勾選一種服務方式'); return; }
 
-          const dto = {
-            userId: USERID,
-            itemId: selectedItemId,
-            priceMin,
-            priceMax,
-            methods
-          };
+              const dto = {
+                itemId: selectedItemId,
+                priceMin,
+                priceMax,
+                methods
+              };
 
-          // 🔹 改呼叫新的 CustomerServiceQuestionnaire API
-          fetch(`${API}/api/CustomerServiceQuestionnaire`, {
-            method: 'POST',
-            headers: { 'Content-Type':'application/json' },
-            body: JSON.stringify(dto)
-          }).then(r => {
-            if (r.ok) {
-              alert('需求已送出');
-              const m = bootstrap.Modal.getInstance(modalEl);
-              m?.hide();
-            } else {
-              r.text().then(t => alert('送出失敗\n' + t));
-            }
-          }).catch(err => alert('送出失敗：' + err));
-        };
-
+              fetch(`${API}/api/CustomerServiceQuestionnaire/${USERID}`, {
+                method: 'POST',
+                headers: { 'Content-Type':'application/json' },
+                body: JSON.stringify(dto)
+              }).then(r=>{
+                if(r.ok){
+                  alert('需求已送出');
+                  const m = bootstrap.Modal.getInstance(modalEl);
+                  m?.hide();
+                } else {
+                  r.text().then(t=>alert('送出失敗\n'+t));
+                }
+              }).catch(err=>alert('送出失敗：'+err));
+            };
           }
 
           // helpers

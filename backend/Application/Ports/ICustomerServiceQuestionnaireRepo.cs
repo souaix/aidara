@@ -1,4 +1,4 @@
 ﻿public interface ICustomerServiceQuestionnaireRepo
 {
-    Task SubmitAsync(CustomerServiceQuestionnaireDto dto, CancellationToken ct);
+    Task SubmitAsync(Guid userId, CustomerServiceQuestionnaireDto dto, CancellationToken ct);
 }
