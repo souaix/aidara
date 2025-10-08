@@ -3,5 +3,5 @@ using Backend.Application.ViewModels.Services;
 
 public interface IServiceRepo
 {
-    Task<List<ServiceCategoryVm>> GetAllCategoriesAsync(CancellationToken ct);
+    Task<List<ServiceCategoryVm>> GetAllCategoriesAsync(string lang, CancellationToken ct);
 }

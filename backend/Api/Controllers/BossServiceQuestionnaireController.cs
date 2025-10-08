@@ -8,15 +8,15 @@ namespace Backend.Api.Controllers
     [Route("api/[controller]")]
     public class BossServiceQuestionnaireController : ControllerBase
     {
-        private readonly BossServiceQuestionnaireService _svc;
+        private readonly BossInfoQuestionnaireService _svc;
 
-        public BossServiceQuestionnaireController(BossServiceQuestionnaireService svc)
+        public BossServiceQuestionnaireController(BossInfoQuestionnaireService svc)
         {
             _svc = svc;
         }
 
         [HttpPost]
-        public async Task<IActionResult> Submit([FromBody] BossServiceQuestionnaireDto dto, CancellationToken ct)
+        public async Task<IActionResult> Submit([FromBody] BossInfoQuestionnaireDto dto, CancellationToken ct)
         {
             await _svc.SubmitAsync(dto, ct);
             return NoContent();

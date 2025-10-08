@@ -63,7 +63,7 @@ builder.Services.AddScoped<IWalletQueryRepo, WalletQueryRepo>();
 
 builder.Services.AddScoped<ILocationRepo, LocationRepo>();
 
-builder.Services.AddScoped<BossServiceQuestionnaireService>();
+builder.Services.AddScoped<BossInfoQuestionnaireService>();
 builder.Services.AddScoped<CustomerServiceQuestionnaireService>();
 
 builder.Services.AddScoped<IServiceStatService, ServiceStatService>();

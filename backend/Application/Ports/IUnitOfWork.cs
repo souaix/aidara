@@ -13,7 +13,7 @@ public interface IUnitOfWork : IAsyncDisposable
     IWalletRepo CreateWalletRepo();
 
     // 老闆服務設定
-    IBossServiceRepo CreateBossServiceRepo();
+    IBossServiceRepo CreateBossInfoRepo();
 
     // 老闆商店（清單、詳細資訊）
     IBossStoreRepo CreateBossStoreRepo();

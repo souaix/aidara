@@ -13,45 +13,55 @@ public class ServiceRepo : IServiceRepo
         _ds = ds;
     }
 
-    public async Task<List<ServiceCategoryVm>> GetAllCategoriesAsync(CancellationToken ct)
+    public async Task<List<ServiceCategoryVm>> GetAllCategoriesAsync(
+        string lang, CancellationToken ct)
     {
         const string sql = @"
-            SELECT c.category_id, c.name AS category_name, c.sort_order,
-                   s.subcategory_id, s.name AS subcategory_name, s.sort_order AS sub_sort,
-                   i.item_id, i.name AS item_name, i.sort_order AS item_sort
-            FROM service_category c
-            LEFT JOIN service_subcategory s ON c.category_id = s.category_id
-            LEFT JOIN service_item i ON s.subcategory_id = i.subcategory_id
-            ORDER BY c.sort_order, s.sort_order, i.sort_order;
+            SELECT 
+                category_id,
+                category_name,
+                subcategory_id,
+                subcategory_name,
+                item_id,
+                item_name,
+                category_sort,
+                subcategory_sort,
+                item_sort
+            FROM vw_service_hierarchy(@lang)
+            ORDER BY category_sort, subcategory_sort, item_sort;
         ";
 
         using var conn = await _ds.OpenConnectionAsync(ct);
-        var rows = await conn.QueryAsync(sql);
+        var rows = await conn.QueryAsync(sql, new { lang });
 
-        var lookup = new Dictionary<Guid, ServiceCategoryVm>();
+        // ⚙️ 建立分層結構
+        var lookup = new Dictionary<string, ServiceCategoryVm>();
 
         foreach (var row in rows)
         {
-            Guid catId = row.category_id;
+            string catId = row.category_id;
             if (!lookup.TryGetValue(catId, out var catVm))
             {
                 catVm = new ServiceCategoryVm
                 {
                     CategoryId = catId,
-                    Name = row.category_name
+                    Name = row.category_name ?? "",
+                    Subcategories = new List<ServiceSubcategoryVm>()
                 };
                 lookup.Add(catId, catVm);
             }
 
             if (row.subcategory_id != null)
             {
-                var subVm = catVm.Subcategories.FirstOrDefault(x => x.SubcategoryId == row.subcategory_id);
+                var subVm = catVm.Subcategories
+                    .FirstOrDefault(x => x.SubcategoryId == (string)row.subcategory_id);
                 if (subVm == null)
                 {
                     subVm = new ServiceSubcategoryVm
                     {
                         SubcategoryId = row.subcategory_id,
-                        Name = row.subcategory_name
+                        Name = row.subcategory_name ?? "",
+                        Items = new List<ServiceItemVm>()
                     };
                     catVm.Subcategories.Add(subVm);
                 }
@@ -61,7 +71,7 @@ public class ServiceRepo : IServiceRepo
                     subVm.Items.Add(new ServiceItemVm
                     {
                         ItemId = row.item_id,
-                        Name = row.item_name
+                        Name = row.item_name ?? ""
                     });
                 }
             }

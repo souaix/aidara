@@ -3,12 +3,12 @@ using Backend.Application.ViewModels.Services;
 using Dapper;
 using Npgsql;
 
-public class BossServiceRepo : IBossServiceRepo
+public class BossInfoRepo : IBossServiceRepo
 {
     private readonly NpgsqlConnection _conn;
     private readonly NpgsqlTransaction _tx;
 
-    public BossServiceRepo(NpgsqlConnection conn, NpgsqlTransaction tx)
+    public BossInfoRepo(NpgsqlConnection conn, NpgsqlTransaction tx)
     {
         _conn = conn;
         _tx = tx;

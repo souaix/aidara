@@ -35,7 +35,9 @@ public sealed class UnitOfWork : IUnitOfWork
     // ========== Transaction 內部使用的 Repo ==========
     public IUserRepo CreateUserRepo() => new UserRepo(_conn!, _tx);
     public IWalletRepo CreateWalletRepo() => new WalletRepo(_conn!, _tx);
-    public IBossServiceRepo CreateBossServiceRepo() => new BossServiceRepo(_conn!, _tx);
+
+    //[modify] 20251008
+    public IBossServiceRepo CreateBossInfoRepo() => new BossInfoRepo(_conn!, _tx);
 
     public ICustomerServiceRequestRepo CreateCustomerServiceRequestRepo() => new CustomerServiceRequestRepo(_conn!, _tx);
 

@@ -410,7 +410,7 @@
             };
 
             try {
-                const res = await fetch(`${API_BASE}/api/BossServiceQuestionnaire`, {
+                const res = await fetch(`${API_BASE}/api/BossInfoEdit/BossInfoQuestionSubmit`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(dto)
@@ -432,7 +432,7 @@
             const catList = document.getElementById("categoryList");
             catList.innerHTML = '<li class="list-group-item text-muted">載入中...</li>';
             try {
-                const res = await fetch(`${API_BASE}/api/BossServices/categories`);
+                const res = await fetch(`${API_BASE}/api/ServicesItem/categories`);
                 if (!res.ok) throw new Error(res.status);
                 categories = await res.json();
 

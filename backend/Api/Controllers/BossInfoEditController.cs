@@ -1,30 +1,35 @@
 ﻿using Backend.Application.Ports;
+using Backend.Application.Services;
 using Backend.Application.ViewModels.Services;
+using Backend.Infrastructure.Localization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class BossServicesController : ControllerBase
+    public class BossInfoEditController : ControllerBase
     {
+        private readonly BossInfoQuestionnaireService _svc;
         private readonly IUnitOfWork _uow;
 
-        public BossServicesController(IUnitOfWork uow)
+        public BossInfoEditController(IUnitOfWork uow, BossInfoQuestionnaireService svc)
         {
             _uow = uow;
+            _svc = svc;
         }
 
         /// <summary>
-        /// 取得所有服務分類 (含中分類與服務項目)
+        /// 將老闆問卷資料送出並儲存
         /// </summary>
-        [HttpGet("categories")]
-        public async Task<ActionResult<List<ServiceCategoryVm>>> GetCategories(CancellationToken ct)
+        [HttpPost("BossInfoQuestionSubmit")]
+        public async Task<IActionResult> BossInfoQuestionSubmit([FromBody] BossInfoQuestionnaireDto dto, CancellationToken ct)
         {
-            var repo = _uow.CreateServiceRepo();
-            var categories = await repo.GetAllCategoriesAsync(ct);
-            return Ok(categories);
+            await _svc.SubmitAsync(dto, ct);
+            return NoContent();
+
         }
+
 
         /// <summary>
         /// 取得使用者已勾選的服務項目
