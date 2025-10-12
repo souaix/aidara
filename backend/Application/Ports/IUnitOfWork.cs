@@ -8,6 +8,9 @@ public interface IUnitOfWork : IAsyncDisposable
 
     // 會員 / 使用者
     IUserRepo CreateUserRepo();
+    IUserRoleRepo CreateUserRoleRepo();
+    IRoleBasisRepo CreateRoleBasisRepo();
+
 
     // 錢包
     IWalletRepo CreateWalletRepo();

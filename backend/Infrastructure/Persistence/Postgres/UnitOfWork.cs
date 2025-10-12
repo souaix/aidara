@@ -32,8 +32,14 @@ public sealed class UnitOfWork : IUnitOfWork
         await (_conn?.DisposeAsync() ?? ValueTask.CompletedTask);
     }
 
+
     // ========== Transaction 內部使用的 Repo ==========
     public IUserRepo CreateUserRepo() => new UserRepo(_conn!, _tx);
+    // ✅ 新增 UserRole / RoleBasis Repo 實例化方法
+    public IUserRoleRepo CreateUserRoleRepo() => new UserRoleRepo(_conn!, _tx);
+    public IRoleBasisRepo CreateRoleBasisRepo() => new RoleBasisRepo(_conn!, _tx);
+
+
     public IWalletRepo CreateWalletRepo() => new WalletRepo(_conn!, _tx);
 
     //[modify] 20251008

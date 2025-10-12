@@ -1,0 +1,76 @@
+﻿@using System.Security.Claims
+@{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+}
+
+<div class="container mt-4">
+    <h3 class="mb-3">我的服務總覽</h3>
+    <p class="text-muted mb-4">您目前上架的所有服務如下，點擊「編輯」可修改詳細設定。</p>
+
+    <div id="bossServiceList" class="row g-3">
+        <div class="text-center text-muted py-5">載入中...</div>
+    </div>
+</div>
+
+<script>
+    (async function(){
+        const wrap = document.getElementById("bossServiceList");
+        const API_BASE = "https://localhost:7030";
+        try {
+            console.log("HERE START");
+            const res = await fetch(`${API_BASE}/api/BossInfo/user-services/@userId`);
+            console.log("HERE:", res);
+
+            if (!res.ok) throw new Error("服務資料載入失敗");
+
+            const data = await res.json();
+            console.log("response data:", data);
+
+            if (!Array.isArray(data) || !data.length) {
+                wrap.innerHTML = `<div class="col-12 text-center text-muted py-5">
+                                    您尚未上架任何服務。
+                                  </div>`;
+                return;
+            }
+
+            wrap.innerHTML = data.map(s => `
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card shadow-sm h-100 border-0">
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold">${s.itemName}</h5>
+                            <p class="text-muted mb-1">${s.categoryName} / ${s.subcategoryName}</p>
+                            <p class="mb-2 small">服務方式：${s.methods?.join(", ") || "未設定"}</p>
+                            <p class="mb-2 small">服務範圍：${s.areas?.map(a => a.cityName + a.districtName).join("、") || "未設定"}</p>
+                            <p class="mb-2 small">價格區間：${s.minPrice} ~ ${s.maxPrice}</p>
+                            <p class="mb-3 small">服務據點：${s.addresses?.map(a => `${a.cityName}${a.districtName}${a.street}${a.addressNo}`).join("<br>") || "未設定"}</p>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-success">${s.status ?? "啟用中"}</span>
+                                <button class="btn btn-sm btn-outline-primary" onclick="editService('${s.itemId}')">
+                                    編輯
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join("");
+
+        } catch (err) {
+            console.error(err);
+            wrap.innerHTML = `<div class="text-danger text-center py-5">載入服務資料失敗，請稍後再試。</div>`;
+        }
+    })();
+
+    async function editService(itemId){
+        const res = await fetch(`/BossServices/Edit/${itemId}`);
+        if (res.ok) {
+            const html = await res.text();
+            const modal = document.createElement("div");
+            modal.innerHTML = html;
+            document.body.appendChild(modal);
+            // 若你要用 Bootstrap Modal，可在這裡顯示 modal
+        } else {
+            alert("無法開啟編輯頁面");
+        }
+    }
+</script>

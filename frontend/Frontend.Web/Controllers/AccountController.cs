@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Data;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -76,13 +77,21 @@ public class AccountController : Controller
 
         resp.EnsureSuccessStatusCode();
         var json = await resp.Content.ReadAsStringAsync();
+        // 🧩 先印出看看後端實際回傳的 JSON
+        Console.WriteLine("==== Backend JSON Response ====");
+        Console.WriteLine(json);
+        Console.WriteLine("===============================");
         var result = JsonSerializer.Deserialize<EnsureUserResponse>(json, _jsonOpts);
+        
 
         if (result?.User is null) return LocalRedirect("/");
 
 
         // 3) 簽站內 Cookie（用後端回來的 UserDto）
         var user = result.User;  // ✅ 補上這一行
+                                 // 新增角色清單（從後端回傳）
+        var roles = user.Roles;
+
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
@@ -91,7 +100,12 @@ public class AccountController : Controller
         };
         if (!string.IsNullOrEmpty(user.AvatarUrl))
             claims.Add(new Claim("avatar_url", user.AvatarUrl));
-
+        // 💡 新增角色資訊
+        foreach (var role in roles)
+        {
+            Console.WriteLine($"User has role: {role}");
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
         var id = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,

@@ -1,0 +1,23 @@
+﻿<div class="container mt-4">
+    <h3 class="mb-4">小老闆控制台</h3>
+
+    <!-- 商家資訊 -->
+    <section id="bossProfileSection" class="mb-5">
+        @await Html.PartialAsync("__BossProfilePartial")
+    </section>
+
+    <!-- 服務項目 -->
+    <section id="bossServiceSection" class="mb-5">
+        @await Html.PartialAsync("__BossServiceListPartial")
+    </section>
+
+    <!-- 認證檔案 -->
+    <section id="bossVerifySection" class="mb-5">
+        @await Html.PartialAsync("__BossVerificationPartial")
+    </section>
+
+    <!-- 個人化介紹 -->
+    <section id="bossIntroSection" class="mb-5">
+        @await Html.PartialAsync("__BossStoreIntroPartial")
+    </section>
+</div>

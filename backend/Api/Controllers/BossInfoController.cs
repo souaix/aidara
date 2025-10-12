@@ -8,12 +8,12 @@ namespace Backend.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class BossInfoEditController : ControllerBase
+    public class BossInfoController : ControllerBase
     {
         private readonly BossInfoQuestionnaireService _svc;
         private readonly IUnitOfWork _uow;
 
-        public BossInfoEditController(IUnitOfWork uow, BossInfoQuestionnaireService svc)
+        public BossInfoController(IUnitOfWork uow, BossInfoQuestionnaireService svc)
         {
             _uow = uow;
             _svc = svc;
@@ -29,6 +29,8 @@ namespace Backend.Api.Controllers
             return NoContent();
 
         }
+
+
 
 
         /// <summary>

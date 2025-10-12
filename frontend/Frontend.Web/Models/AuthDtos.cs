@@ -4,7 +4,16 @@ public enum AuthMode { Login, Register }
 
 public record GoogleEnsurePayload(string Email, string? DisplayName, string? AvatarUrl, AuthMode Mode);
 
-public record UserDto(Guid UserId, string Email, string? DisplayName, string? AvatarUrl);
+public class UserDto
+{
+    public Guid UserId { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string AvatarUrl { get; set; } = string.Empty;
+
+    // ✅ 新增
+    public List<string> Roles { get; set; } = new();
+}
 
 public class EnsureUserResponse
 {

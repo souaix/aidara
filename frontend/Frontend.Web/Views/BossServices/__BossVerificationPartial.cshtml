@@ -1,0 +1,26 @@
+﻿<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <h5 class="fw-bold mb-3">認證檔案上傳</h5>
+        <p class="text-muted small">請上傳您的身分證明或店家營業執照，以利平台審核。</p>
+        <input type="file" id="verifyFile" accept="image/*" class="form-control mb-3">
+        <button class="btn btn-success btn-sm" onclick="uploadVerification()">上傳</button>
+        <div id="verifyStatus" class="small mt-2 text-muted"></div>
+    </div>
+</div>
+
+<script>
+    async function uploadVerification(){
+        const file = document.getElementById("verifyFile").files[0];
+        if (!file) return alert("請選擇檔案");
+        const form = new FormData();
+        form.append("file", file);
+
+        const res = await fetch(`/api/BossInfo/upload-verification`, {
+            method: "POST",
+            body: form
+        });
+
+        const text = await res.text();
+        document.getElementById("verifyStatus").innerText = res.ok ? "✅ 上傳成功" : "❌ 上傳失敗：" + text;
+    }
+</script>
