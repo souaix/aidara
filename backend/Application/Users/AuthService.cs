@@ -53,7 +53,8 @@ public class AuthService
                 AvatarUrl = avatarUrl ?? "",
                 IsActive = true,
                 CreatedAt = now,
-                UpdatedAt = now
+                UpdatedAt = now,
+                BossName = displayName ?? email
             }, ct);
 
             // 3) 發錢包（依你原本邏輯）
@@ -80,7 +81,8 @@ public class AuthService
                 Email = created.Email,
                 DisplayName = created.DisplayName,
                 AvatarUrl = created.AvatarUrl,
-                Roles = newUserRoles
+                Roles = newUserRoles,
+                BossName = created.DisplayName
             };
 
             await _uow.CommitAsync(ct);

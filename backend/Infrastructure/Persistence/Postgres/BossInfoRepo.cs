@@ -14,6 +14,7 @@ public class BossInfoRepo : IBossServiceRepo
         _tx = tx;
     }
 
+    //問券結果取代資Boss資料
     public async Task ReplaceItemsAsync(Guid userId, List<ItemPriceRangeDto> items, CancellationToken ct)
     {
         await _conn.ExecuteAsync("DELETE FROM boss_service_item WHERE user_id = @userId", new { userId }, _tx);
@@ -73,4 +74,6 @@ public class BossInfoRepo : IBossServiceRepo
                 new { userId, addr.CityId, addr.DistrictId, addr.Street, addr.AddressNo }, _tx);
         }
     }
+
+
 }

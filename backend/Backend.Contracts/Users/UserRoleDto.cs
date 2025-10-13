@@ -1,4 +1,4 @@
-﻿namespace Backend.Application.ViewModels.Users;
+﻿namespace Backend.Application.Contracts.Users;
 
 /// <summary>
 /// 使用者角色資料傳輸物件
@@ -10,6 +10,8 @@ public class UserRoleDto
 
     /// <summary>角色代碼（例如 ADMIN、BOSS、CUSTOMER）</summary>
     public string RoleId { get; set; } = string.Empty;
+
+    public string RoleName { get; set; } = "";
 
     /// <summary>建立時間</summary>
     public DateTime CreateDate { get; set; }

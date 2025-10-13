@@ -1,9 +1,12 @@
-﻿using Backend.Application.Ports;
+﻿using Backend.Application.Contracts.Users;
+using Backend.Application.Ports;
 using Backend.Application.Services;
+using Backend.Application.ViewModels;
 using Backend.Application.ViewModels.Services;
+using Backend.Contracts.Users;
+using Backend.Domain.Entities;
 using Backend.Infrastructure.Localization;
 using Microsoft.AspNetCore.Mvc;
-
 namespace Backend.Api.Controllers
 {
     [ApiController]
@@ -31,6 +34,59 @@ namespace Backend.Api.Controllers
         }
 
 
+        [HttpGet("user/{userId:guid}")]
+        public async Task<IActionResult> GetUserProfile(Guid userId, CancellationToken ct)
+        {
+            var userRepo = _uow.CreateUserRepo();
+
+            var user = await userRepo.GetUserProfileAsync(userId, ct);
+            var role = await userRepo.GetUserRoleAsync(userId, ct);
+
+            if (user == null)
+                return NotFound();
+
+            var dto = new
+            {
+                user.UserId,
+                user.Email,
+                DisplayName = role?.RoleId?.Contains("BOSS") == true
+                    ? user.BossName
+                    : user.DisplayName,
+                user.AvatarUrl
+            };
+
+            return Ok(dto);
+        }
+
+        [HttpGet("role/{userId:guid}")]
+        public async Task<IActionResult> GetUserRole(Guid userId, CancellationToken ct)
+        {
+            var repo = _uow.CreateUserRepo();
+            var roles = await repo.GetUserRolesAsync(userId, ct);
+
+            if (roles is null || !roles.Any())
+                return Ok(new UserRoleDto { RoleId = "UNVERIFYBOSS", RoleName = "未認證" });
+
+            var mainRole = roles.First();
+            return Ok(new UserRoleDto
+            {
+                RoleId = mainRole.RoleId,
+                RoleName = mainRole.RoleId == "UNVERIFYBOSS" ? "未認證" : mainRole.RoleName
+            });
+        }
+
+        // 🔹 3) 地址資訊（含地名轉換）
+        [HttpGet("address/{userId:guid}")]
+        public async Task<IActionResult> GetUserAddress(Guid userId, CancellationToken ct)
+        {
+            var repo = _uow.CreateBossInfoRepo();
+            var addr = await repo.GetBossAddressAsync(userId, ct);
+
+            if (addr is null)
+                return Ok(new BossUserAddressDto { CityName = "", DistrictName = "", Phone = "", Street = "", AddressNo = "" });
+
+            return Ok(addr);
+        }
 
 
         /// <summary>

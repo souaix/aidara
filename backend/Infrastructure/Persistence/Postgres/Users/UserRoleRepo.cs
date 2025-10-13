@@ -1,5 +1,6 @@
-﻿using Backend.Application.Ports;
-using Backend.Application.ViewModels.Users;
+﻿using Backend.Application.Contracts.Users;
+using Backend.Application.Ports;
+using Backend.Application.Contracts.Users;
 using Dapper;
 using Npgsql;
 using System.Data;
