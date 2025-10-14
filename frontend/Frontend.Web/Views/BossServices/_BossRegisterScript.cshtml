@@ -1,0 +1,413 @@
+﻿@* Views/Shared/Partials/_BossRegisterScript.cshtml *@
+
+    <script>
+            /** ================== 常數 / 狀態 ================== */
+            const API_BASE = "https://localhost:7030";
+            const STEP = { CATEGORY: 1, PRICE: 2, METHOD: 3, AREA: 4, ADDRESS: 5 };
+            const FINAL_STEP = STEP.ADDRESS;
+
+            let categories = [];
+            const selectedItems = new Set();
+            const selectedMethods = new Set();
+            const itemPriceRanges = new Map();
+            let currentStep = STEP.CATEGORY;
+            let stepHistory = [];
+
+            /** ================== 共用 UI 控制 ================== */
+            function showStep(step) {
+                document.querySelectorAll(".step").forEach(s => s.classList.add("d-none"));
+                document.getElementById("step" + step)?.classList.remove("d-none");
+                currentStep = step;
+                document.getElementById("prevStep").disabled = (stepHistory.length <= 1);
+                updateNextButtonText();
+
+                if (step === STEP.PRICE) renderPriceStep();
+            }
+
+            function pushHistory(step) {
+                if (stepHistory[stepHistory.length - 1] !== step) stepHistory.push(step);
+            }
+
+            function updateNextButtonText() {
+                const btn = document.getElementById("nextStep");
+                if (!btn) return;
+                if (currentStep === FINAL_STEP || (currentStep === STEP.METHOD && onlyOnlineSelected())) {
+                    btn.textContent = "完成";
+                } else {
+                    btn.textContent = "下一步";
+                }
+            }
+
+            /** ================== 規則判斷 ================== */
+            function onlyOnlineSelected() {
+                return selectedMethods.size === 1 && selectedMethods.has("網路/電話服務");
+            }
+
+            function getNextStep(curr) {
+                if (curr === STEP.CATEGORY) return STEP.PRICE;
+                if (curr === STEP.PRICE) return STEP.METHOD;
+                if (curr === STEP.METHOD) {
+                    const hasHome = selectedMethods.has("我可以上門服務");
+                    const hasStore = selectedMethods.has("客戶到我的據點");
+
+                    if (onlyOnlineSelected()) return null;
+                    if (hasHome && !hasStore) return STEP.AREA;
+                    if (!hasHome && hasStore) return STEP.ADDRESS;
+                    if (hasHome && hasStore) return STEP.AREA;
+                    return STEP.METHOD;
+                }
+                if (curr === STEP.AREA) {
+                    if (selectedMethods.has("客戶到我的據點")) return STEP.ADDRESS;
+                    return null;
+                }
+                if (curr === STEP.ADDRESS) return null;
+                return Math.min(curr + 1, FINAL_STEP);
+            }
+
+            /** ================== Step2：價格區間 ================== */
+            function findItemName(itemId) {
+                for (const c of categories) {
+                    for (const s of (c.subcategories || [])) {
+                        const item = (s.items || []).find(i => String(i.itemId) === String(itemId));
+                        if (item) return item.name;
+                    }
+                }
+                return "(未知項目)";
+            }
+
+            function renderPriceStep() {
+                const tbody = document.getElementById("priceTbody");
+                if (!tbody) return;
+                tbody.innerHTML = "";
+                const itemIds = Array.from(selectedItems);
+                if (itemIds.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-muted">尚未勾選任何服務項目</td></tr>';
+                    return;
+                }
+
+                itemIds.forEach(id => {
+                    const row = document.createElement("tr");
+                    const tdName = document.createElement("td");
+                    tdName.textContent = findItemName(id);
+
+                    const tdMin = document.createElement("td");
+                    const minInput = document.createElement("input");
+                    minInput.type = "number";
+                    minInput.className = "form-control";
+                    minInput.min = "0";
+                    minInput.placeholder = "最低價";
+                    if (itemPriceRanges.has(id)) minInput.value = itemPriceRanges.get(id).min ?? "";
+                    tdMin.appendChild(minInput);
+
+                    const tdMax = document.createElement("td");
+                    const maxInput = document.createElement("input");
+                    maxInput.type = "number";
+                    maxInput.className = "form-control";
+                    maxInput.min = "0";
+                    maxInput.placeholder = "最高價";
+                    if (itemPriceRanges.has(id)) maxInput.value = itemPriceRanges.get(id).max ?? "";
+                    tdMax.appendChild(maxInput);
+
+                    const tdCheck = document.createElement("td");
+                    const msg = document.createElement("div");
+                    msg.className = "small";
+                    msg.textContent = "請輸入價格";
+                    tdCheck.appendChild(msg);
+
+                    function updateRange() {
+                        const min = Number(minInput.value);
+                        const max = Number(maxInput.value);
+                        minInput.classList.remove("is-invalid");
+                        maxInput.classList.remove("is-invalid");
+                        if (Number.isFinite(min) && Number.isFinite(max)) {
+                            if (min < 0 || max < 0) {
+                                msg.textContent = "價格不可小於 0";
+                                minInput.classList.add("is-invalid");
+                                maxInput.classList.add("is-invalid");
+                            } else if (max < min) {
+                                msg.textContent = "最高價需 ≥ 最低價";
+                                minInput.classList.add("is-invalid");
+                                maxInput.classList.add("is-invalid");
+                            } else {
+                                msg.textContent = "OK";
+                                itemPriceRanges.set(id, { min, max });
+                            }
+                        } else {
+                            msg.textContent = "請輸入數字";
+                        }
+                    }
+
+                    minInput.addEventListener("input", updateRange);
+                    maxInput.addEventListener("input", updateRange);
+                    updateRange();
+
+                    row.append(tdName, tdMin, tdMax, tdCheck);
+                    tbody.appendChild(row);
+                });
+            }
+
+            function validatePriceStep() {
+                for (const id of selectedItems) {
+                    if (!itemPriceRanges.has(id)) return false;
+                    const r = itemPriceRanges.get(id);
+                    if (!r) return false;
+                    const min = Number(r.min), max = Number(r.max);
+                    if (!Number.isFinite(min) || !Number.isFinite(max)) return false;
+                    if (min < 0 || max < 0 || max < min) return false;
+                }
+                return selectedItems.size > 0;
+            }
+
+            document.getElementById("applyBatch")?.addEventListener("click", () => {
+                const bmin = Number(document.getElementById("batchMin").value);
+                const bmax = Number(document.getElementById("batchMax").value);
+                if (!Number.isFinite(bmin) || !Number.isFinite(bmax)) {
+                    alert("請輸入正確的批次價格（數字）");
+                    return;
+                }
+                if (bmin < 0 || bmax < 0 || bmax < bmin) {
+                    alert("批次最高價需 ≥ 最低價，且不可小於 0");
+                    return;
+                }
+                for (const id of selectedItems) itemPriceRanges.set(id, { min: bmin, max: bmax });
+                renderPriceStep();
+            });
+
+            /** ================== 完成：組 DTO + AJAX ================== */
+            async function finish() {
+                const userId = document.getElementById("openRegisterModal")?.dataset.userId || "00000000-0000-0000-0000-000000000001";
+                const serviceItemIds = Array.from(selectedItems);
+                const itemPriceRangesArr = serviceItemIds.map(id => {
+                    const r = itemPriceRanges.get(id);
+                    return { itemId: id, minPrice: Number(r?.min ?? 0), maxPrice: Number(r?.max ?? 0) };
+                });
+                const serviceMethods = Array.from(selectedMethods);
+                const serviceAreas = [];
+                const citySel = document.getElementById("citySelect");
+                const districtSel = document.getElementById("districtSelect");
+                if (citySel && citySel.value && districtSel && districtSel.selectedOptions.length > 0) {
+                    Array.from(districtSel.selectedOptions).forEach(opt => {
+                        serviceAreas.push({
+                            cityId: parseInt(citySel.value),
+                            districtId: parseInt(opt.value)
+                        });
+                    });
+                }
+                const serviceAddresses = [];
+                const addrCity = document.getElementById("addrCity")?.value;
+                const addrDistrict = document.getElementById("addrDistrict")?.value;
+                if (addrCity && addrDistrict) {
+                    serviceAddresses.push({
+                        cityId: parseInt(addrCity),
+                        districtId: parseInt(addrDistrict),
+                        street: document.getElementById("addrStreet").value || "",
+                        addressNo: document.getElementById("addrNo").value || ""
+                    });
+                }
+
+                const dto = {
+                    userId,
+                    serviceItemIds,
+                    itemPriceRanges: itemPriceRangesArr,
+                    serviceMethods,
+                    serviceAreas,
+                    serviceAddresses
+                };
+
+                try {
+                    const res = await fetch(`${API_BASE}/api/BossInfo/BossInfoQuestionSubmit`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+                    if (!res.ok) {
+                        const text = await res.text();
+                        throw new Error(`送出失敗 (${res.status}) ${text || ""}`);
+                    }
+                    alert("註冊完成！");
+                    bootstrap.Modal.getInstance(document.getElementById("registerModal"))?.hide();
+                } catch (err) {
+                    console.error(err);
+                    alert(err.message || "送出失敗，請稍後再試");
+                }
+            }
+
+            /** ================== Step1：載入分類 ================== */
+            async function loadCategories() {
+                const catList = document.getElementById("categoryList");
+                if (!catList) return;
+                catList.innerHTML = '<li class="list-group-item text-muted">載入中...</li>';
+                try {
+                    const res = await fetch(`${API_BASE}/api/BossServices/categories`);
+                    if (!res.ok) throw new Error(res.status);
+                    categories = await res.json();
+                    catList.innerHTML = "";
+                    if (!categories?.length) {
+                        catList.innerHTML = '<li class="list-group-item text-muted">沒有分類資料</li>';
+                        return;
+                    }
+                    categories.forEach(c => {
+                        const li = document.createElement("li");
+                        li.className = "list-group-item category-item";
+                        li.dataset.id = c.categoryId;
+                        li.textContent = c.name;
+                        catList.appendChild(li);
+                    });
+                } catch (e) {
+                    console.error("讀取服務分類失敗:", e);
+                    catList.innerHTML = '<li class="list-group-item text-danger">載入失敗</li>';
+                }
+            }
+
+            /** ================== 點擊行為 ================== */
+            document.addEventListener("click", e => {
+                if (e.target.classList.contains("category-item")) {
+                    const catId = e.target.dataset.id;
+                    const cat = categories.find(c => String(c.categoryId) === String(catId));
+                    const subList = document.getElementById("subcategoryList");
+                    subList.innerHTML = "";
+                    if (!cat?.subcategories?.length) {
+                        subList.innerHTML = '<li class="list-group-item text-muted">此分類沒有中分類</li>';
+                        document.getElementById("itemList").innerHTML = '<li class="list-group-item text-muted">請先選擇中分類</li>';
+                        return;
+                    }
+                    cat.subcategories.forEach(s => {
+                        const li = document.createElement("li");
+                        li.className = "list-group-item subcategory-item";
+                        li.dataset.id = s.subcategoryId;
+                        li.textContent = s.name;
+                        subList.appendChild(li);
+                    });
+                    document.getElementById("itemList").innerHTML = '<li class="list-group-item text-muted">請先選擇中分類</li>';
+                }
+
+                if (e.target.classList.contains("subcategory-item")) {
+                    const subId = e.target.dataset.id;
+                    const cat = categories.find(c => c.subcategories?.some(s => String(s.subcategoryId) === String(subId)));
+                    const sub = cat?.subcategories?.find(s => String(s.subcategoryId) === String(subId));
+                    const itemList = document.getElementById("itemList");
+                    if (!sub?.items?.length) {
+                        itemList.innerHTML = '<li class="list-group-item text-muted">此中分類沒有服務項目</li>';
+                        return;
+                    }
+                    const items = [...sub.items].sort((a, b) => {
+                        const aSel = selectedItems.has(a.itemId);
+                        const bSel = selectedItems.has(b.itemId);
+                        return (aSel === bSel) ? 0 : (aSel ? -1 : 1);
+                    });
+                    itemList.innerHTML = "";
+                    items.forEach(i => {
+                        const label = document.createElement("label");
+                        label.className = "list-group-item";
+                        const checkbox = document.createElement("input");
+                        checkbox.type = "checkbox";
+                        checkbox.className = "item-check";
+                        checkbox.dataset.id = i.itemId;
+                        checkbox.checked = selectedItems.has(i.itemId);
+                        checkbox.addEventListener("change", () => {
+                            if (checkbox.checked) {
+                                selectedItems.add(i.itemId);
+                            } else {
+                                selectedItems.delete(i.itemId);
+                                itemPriceRanges.delete(i.itemId);
+                            }
+                        });
+                        label.append(checkbox, " " + i.name);
+                        itemList.appendChild(label);
+                    });
+                }
+            });
+
+            /** ================== 載入城市 / 行政區 ================== */
+            async function loadCities(intoSelectId) {
+                try {
+                    const res = await fetch(`${API_BASE}/api/Location/cities`);
+                    const cities = await res.json();
+                    const sel = document.getElementById(intoSelectId);
+                    sel.innerHTML = '<option value="">請選擇縣市</option>';
+                    cities.forEach(c => {
+                        const opt = document.createElement("option");
+                        opt.value = c.cityId;
+                        opt.textContent = c.cityName;
+                        sel.appendChild(opt);
+                    });
+                } catch (err) {
+                    console.error("讀取縣市失敗:", err);
+                }
+            }
+
+            async function loadDistricts(cityId, intoSelectId, allowMultiple = false) {
+                const sel = document.getElementById(intoSelectId);
+                sel.innerHTML = allowMultiple ? "" : '<option value="">請先選擇縣市</option>';
+                if (!cityId) return;
+                try {
+                    const res = await fetch(`${API_BASE}/api/Location/districts/${cityId}`);
+                    const districts = await res.json();
+                    districts.forEach(d => {
+                        const opt = document.createElement("option");
+                        opt.value = d.districtId;
+                        opt.textContent = d.districtName;
+                        sel.appendChild(opt);
+                    });
+                } catch (err) {
+                    console.error("讀取行政區失敗:", err);
+                }
+            }
+
+            document.getElementById("citySelect")?.addEventListener("change", function () {
+                loadDistricts(this.value, "districtSelect", true);
+            });
+
+            document.getElementById("addrCity")?.addEventListener("change", function () {
+                loadDistricts(this.value, "addrDistrict", false);
+            });
+
+            /** ================== Modal 開啟 / 導覽 ================== */
+        document.addEventListener("click", e => {
+          if (e.target && e.target.id === "openRegisterModal") {
+              selectedMethods.clear();
+              itemPriceRanges.clear();
+              stepHistory = [];
+              pushHistory(STEP.CATEGORY);
+              showStep(STEP.CATEGORY);
+              loadCategories();
+              loadCities("citySelect");
+              loadCities("addrCity");
+              new bootstrap.Modal(document.getElementById("registerModal")).show();
+          }
+        });
+
+
+
+            document.getElementById("nextStep")?.addEventListener("click", () => {
+                if (currentStep === STEP.CATEGORY && selectedItems.size === 0) {
+                    alert("請先勾選至少一個服務項目");
+                    return;
+                }
+                if (currentStep === STEP.PRICE && !validatePriceStep()) {
+                    alert("請為每個已勾選項目填入正確的最低價與最高價");
+                    return;
+                }
+                if (currentStep === STEP.METHOD) {
+                    selectedMethods.clear();
+                    document.querySelectorAll("#step3 .method-check:checked").forEach(cb => selectedMethods.add(cb.value));
+                    if (onlyOnlineSelected()) { finish(); return; }
+                }
+                if (currentStep === FINAL_STEP) { finish(); return; }
+                const next = getNextStep(currentStep);
+                if (next === null) { finish(); return; }
+                pushHistory(next);
+                showStep(next);
+            });
+
+            document.getElementById("prevStep")?.addEventListener("click", () => {
+                if (stepHistory.length > 1) {
+                    stepHistory.pop();
+                    showStep(stepHistory[stepHistory.length - 1]);
+                }
+            });
+
+            /** ================== 初始 ================== */
+            showStep(STEP.CATEGORY);
+        
+    </script>

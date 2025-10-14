@@ -1,7 +1,7 @@
 ﻿using Backend.Application.Listings;
 using Backend.Application.Ports;
-using Backend.Application.Services;
-using Backend.Application.Users;
+using Backend.Application.Services.Boss;
+using Backend.Application.Services.Users;
 using Backend.Application.Wallet;
 using Backend.Domain.Wallet;
 using Backend.Infrastructure.Persistence.Postgres;
@@ -11,7 +11,7 @@ using System.Text.Json.Serialization;
 
 // 在建構 Host 前手動設定環境
 #if DEBUG
-    Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
 #else
 Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
 #endif
@@ -75,7 +75,6 @@ if (builder.Environment.IsDevelopment())
 	builder.Services.AddScoped<IServiceRepo, MockServiceRepo>();
     builder.Services.AddScoped<IBossStoreRepo, MockBossStoreRepo>();
     builder.Services.AddSingleton<ICustomerServiceRequestRepo, MockCustomerServiceRequestRepo>();
-    builder.Services.AddSingleton<ICustomerDemandRepo, MockCustomerDemandRepo>();
 
 }
 else
@@ -85,7 +84,6 @@ else
 	builder.Services.AddScoped<IServiceRepo, ServiceRepo>();
     builder.Services.AddScoped<IBossStoreRepo, BossStoreRepo>();
     builder.Services.AddSingleton<ICustomerServiceRequestRepo, CustomerServiceRequestRepo>();
-    builder.Services.AddSingleton<ICustomerDemandRepo, MockCustomerDemandRepo>();
 }
 
 

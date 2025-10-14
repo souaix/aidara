@@ -1,6 +1,6 @@
 ﻿using Backend.Application.Contracts.Users;
 using Backend.Application.Ports;
-using Backend.Application.Services;
+using Backend.Application.Services.Boss;
 using Backend.Application.ViewModels;
 using Backend.Application.ViewModels.Services;
 using Backend.Contracts.Users;
@@ -9,7 +9,7 @@ using Backend.Infrastructure.Localization;
 using Microsoft.AspNetCore.Mvc;
 namespace Backend.Api.Controllers
 {
-    [ApiController]
+	[ApiController]
     [Route("api/[controller]")]
     public class BossInfoController : ControllerBase
     {

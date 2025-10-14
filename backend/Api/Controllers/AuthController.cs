@@ -1,7 +1,7 @@
-﻿using Backend.Application.Users;
-using Backend.Contracts.Users;
+﻿using Backend.Contracts.Users;
 using Backend.Application.Ports;   // 注意：要引用 Ports 取得 IUserRepo
 using Microsoft.AspNetCore.Mvc;
+using Backend.Application.Services.Users;
 
 namespace Backend.Api.Controllers;
 
