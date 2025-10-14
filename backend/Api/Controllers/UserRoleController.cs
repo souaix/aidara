@@ -1,5 +1,6 @@
-﻿using Backend.Application.Ports;
-using Backend.Application.ViewModels.Users;
+﻿using Backend.Application.Contracts.Users;
+using Backend.Application.Ports;
+using Backend.Contracts.Users;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Api.Controllers
@@ -8,12 +9,12 @@ namespace Backend.Api.Controllers
     [Route("api/[controller]")]
     public class UserRoleController : ControllerBase
     {
-        private readonly IUserRoleRepo _userRoleRepo;
+        private readonly IUserRepo _userRepo;
         private readonly IRoleBasisRepo _roleBasisRepo;
 
-        public UserRoleController(IUserRoleRepo userRoleRepo, IRoleBasisRepo roleBasisRepo)
+        public UserRoleController(IUserRepo userRepo, IRoleBasisRepo roleBasisRepo)
         {
-            _userRoleRepo = userRoleRepo;
+            _userRepo = userRepo;
             _roleBasisRepo = roleBasisRepo;
         }
 
@@ -23,7 +24,7 @@ namespace Backend.Api.Controllers
         [HttpGet("{userId:guid}")]
         public async Task<ActionResult<List<UserRoleDto>>> GetUserRoles(Guid userId, CancellationToken ct)
         {
-            var roles = await _userRoleRepo.GetUserRolesAsync(userId, ct);
+            var roles = await _userRepo.GetUserRolesAsync(userId, ct);
             return Ok(roles);
         }
 
@@ -36,7 +37,7 @@ namespace Backend.Api.Controllers
             if (string.IsNullOrWhiteSpace(req.RoleId))
                 return BadRequest("RoleId 不可為空");
 
-            await _userRoleRepo.AddUserRoleAsync(userId, req.RoleId, req.ExpireDate, ct);
+            await _userRepo.AddUserRoleAsync(userId, req.RoleId, req.ExpireDate, ct);
             return NoContent();
         }
 
@@ -46,7 +47,7 @@ namespace Backend.Api.Controllers
         [HttpDelete("{userId:guid}/{roleId}")]
         public async Task<IActionResult> RemoveUserRole(Guid userId, string roleId, CancellationToken ct)
         {
-            await _userRoleRepo.RemoveUserRoleAsync(userId, roleId, ct);
+            await _userRepo.RemoveUserRoleAsync(userId, roleId, ct);
             return NoContent();
         }
 

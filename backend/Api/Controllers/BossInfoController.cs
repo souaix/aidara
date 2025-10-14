@@ -76,17 +76,17 @@ namespace Backend.Api.Controllers
         }
 
         // 🔹 3) 地址資訊（含地名轉換）
-        [HttpGet("address/{userId:guid}")]
-        public async Task<IActionResult> GetUserAddress(Guid userId, CancellationToken ct)
-        {
-            var repo = _uow.CreateBossInfoRepo();
-            var addr = await repo.GetBossAddressAsync(userId, ct);
+        //[HttpGet("address/{userId:guid}")]
+        //public async Task<IActionResult> GetUserAddress(Guid userId, CancellationToken ct)
+        //{
+        //    var repo = _uow.CreateBossInfoRepo();
+        //    var addr = await repo.GetBossAddressAsync(userId, ct);
 
-            if (addr is null)
-                return Ok(new BossUserAddressDto { CityName = "", DistrictName = "", Phone = "", Street = "", AddressNo = "" });
+        //    if (addr is null)
+        //        return Ok(new BossUserAddressDto { CityName = "", DistrictName = "", Phone = "", Street = "", AddressNo = "" });
 
-            return Ok(addr);
-        }
+        //    return Ok(addr);
+        //}
 
 
         /// <summary>

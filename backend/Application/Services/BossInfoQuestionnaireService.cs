@@ -27,7 +27,7 @@ public class BossInfoQuestionnaireService
             await repo.ReplaceAddressesAsync(dto.UserId, dto.ServiceAddresses, ct);
 
             // 2️⃣ 更新使用者角色為 GOLDENBOSS
-            var roleRepo = uow.CreateUserRoleRepo();
+            var roleRepo = uow.CreateUserRepo();
             await roleRepo.AddUserRoleAsync(dto.UserId, "GOLDENBOSS", null, ct);
 
             // ✅ 提交整個 transaction

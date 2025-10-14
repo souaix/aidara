@@ -2,7 +2,7 @@
 using Backend.Infrastructure.Persistence.Postgres;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-
+using Backend.Application.Contracts.Users;
 public sealed class UnitOfWork : IUnitOfWork
 {
     private readonly NpgsqlDataSource _ds;
@@ -36,7 +36,7 @@ public sealed class UnitOfWork : IUnitOfWork
     // ========== Transaction 內部使用的 Repo ==========
     public IUserRepo CreateUserRepo() => new UserRepo(_conn!, _tx);
     // ✅ 新增 UserRole / RoleBasis Repo 實例化方法
-    public IUserRoleRepo CreateUserRoleRepo() => new UserRoleRepo(_conn!, _tx);
+    public IUserRepo CreateUserRoleRepo() => new UserRepo(_conn!, _tx);
     public IRoleBasisRepo CreateRoleBasisRepo() => new RoleBasisRepo(_conn!, _tx);
 
 

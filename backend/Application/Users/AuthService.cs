@@ -26,7 +26,7 @@ public class AuthService
             
             if (existing is not null)
             {
-                var roleRepo = _uow.CreateUserRoleRepo();
+                var roleRepo = _uow.CreateUserRepo();
                 var roles = await roleRepo.GetUserRolesAsync(existing.UserId, ct);
                 var dto = new UserDto
                 {
@@ -70,7 +70,7 @@ public class AuthService
             ), ct);
 
             // 4) 給預設角色（可依需求改：CUSTOMER / UNVERIFYBOSS 等）
-            var userRoleRepo = _uow.CreateUserRoleRepo();
+            var userRoleRepo = _uow.CreateUserRepo();
             await userRoleRepo.AddUserRoleAsync(created.UserId, "CUSTOMER", null, ct);
 
             // 5) 組含角色的 UserDto

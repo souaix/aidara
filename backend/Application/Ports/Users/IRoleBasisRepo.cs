@@ -1,4 +1,4 @@
-﻿using Backend.Application.ViewModels.Users;
+﻿using Backend.Application.Contracts.Users;
 
 public interface IRoleBasisRepo
 {
