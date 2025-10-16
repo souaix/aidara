@@ -2,8 +2,8 @@
 using Backend.Application.Ports;
 using Backend.Application.Services.Boss;
 using Backend.Application.Services.Users;
-using Backend.Application.Wallet;
-using Backend.Domain.Wallet;
+
+
 using Backend.Infrastructure.Persistence.Postgres;
 
 using Infrastructure.Persistence.Mock;
@@ -39,30 +39,36 @@ builder.Services.AddSingleton(dataSource);
 // ========= Repos / Services =========
 builder.Services.AddScoped<IListingRepo, ListingRepo>();
 
-// UnitOfWork：每個 scope 建立一個交易上下文
-builder.Services.AddScoped<IUnitOfWork>(sp =>
-    new UnitOfWork(
-        sp.GetRequiredService<NpgsqlDataSource>(),
-        sp  // 把 ServiceProvider 傳進去
-    ));
+//// UnitOfWork：每個 scope 建立一個交易上下文
+//builder.Services.AddScoped<IUnitOfWork>(sp =>
+//    new UnitOfWork(
+//        sp.GetRequiredService<NpgsqlDataSource>(),
+//        sp  // 把 ServiceProvider 傳進去
+//    ));
 
 
-builder.Services.AddScoped<Func<IUnitOfWork>>(sp => () => sp.GetRequiredService<IUnitOfWork>());
+//builder.Services.AddScoped<Func<IUnitOfWork>>(sp => () => sp.GetRequiredService<IUnitOfWork>());
 
-// 提供「工廠」，讓 Service 可以在同一個 UoW 下建立 Repo
-builder.Services.AddScoped<Func<IUserRoleRepo>>(sp => () =>
-{
-    var uow = (UnitOfWork)sp.GetRequiredService<IUnitOfWork>();
-    return uow.CreateUserRepo();
-});
+//// 提供「工廠」，讓 Service 可以在同一個 UoW 下建立 Repo
+//builder.Services.AddScoped<Func<IUserRoleRepo>>(sp => () =>
+//{
+//    var uow = (UnitOfWork)sp.GetRequiredService<IUnitOfWork>();
+//    return uow.CreateUserRepo();
+//});
+
+
 
 // 應用服務
+
+
+builder.Services.AddScoped<IRoleBasisRepo, RoleBasisRepo>();
+builder.Services.AddScoped<IUserRepo, UserRepo>();
+builder.Services.AddScoped<IUserRoleRepo, UserRoleRepo>();
 builder.Services.AddScoped<AuthService>();
 
 //以下未確認
+builder.Services.AddScoped<AuthService>();
 
-builder.Services.AddScoped<WalletService>();
-builder.Services.AddScoped<IWalletQueryRepo, WalletQueryRepo>();
 
 
 builder.Services.AddScoped<ILocationRepo, LocationRepo>();

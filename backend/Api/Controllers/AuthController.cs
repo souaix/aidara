@@ -1,7 +1,8 @@
 ﻿using Backend.Contracts.Users;
-using Backend.Application.Ports;   // 注意：要引用 Ports 取得 IUserRepo
-using Microsoft.AspNetCore.Mvc;
 using Backend.Application.Services.Users;
+using Backend.Infrastructure.Persistence.Postgres;
+using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 
 namespace Backend.Api.Controllers;
 
@@ -9,31 +10,45 @@ namespace Backend.Api.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly AuthService _auth;
-    private readonly Func<IUserRoleRepo> _userRepoFactory;
+    private readonly NpgsqlDataSource _ds;
+    private readonly AuthService _authService;
 
-    public AuthController(AuthService auth, Func<IUserRoleRepo> userRepoFactory)
+    public AuthController(NpgsqlDataSource ds, AuthService authService)
     {
-        _auth = auth;
-        _userRepoFactory = userRepoFactory;
+        _ds = ds;
+        _authService = authService;
     }
 
-	[HttpPost("google/auto")]
-public async Task<ActionResult<EnsureUserResponse>> EnsureGoogleAuto([FromBody] GooglePayload p, CancellationToken ct)
-{
-	try
-	{
-		var (userDto, isNew) = await _auth.EnsureUserForGoogleAutoAsync(
-			p.Email, p.DisplayName, p.AvatarUrl, _userRepoFactory, ct);
+    /// <summary>
+    /// Google 自動登入／註冊
+    /// </summary>
+    [HttpPost("google/auto")]
+    public async Task<ActionResult<EnsureUserResponse>> EnsureGoogleAuto(
+        [FromBody] GooglePayload payload,
+        CancellationToken ct)
+    {
+        await using var uow = new _UnitOfWork(_ds);
+        var db = await uow.BeginAsync(ct);
 
-		return Ok(new EnsureUserResponse(userDto, isNew));
-	}
-	catch (Exception ex)
-	{
-		Console.WriteLine($"🔥 AutoEnsure failed: {ex.Message}");
-		return StatusCode(500, new { message = ex.Message });
-	}
-}
+        try
+        {
+            var (userDto, isNew) = await _authService.EnsureUserForGoogleAutoAsync(
+                db,
+                payload.Email,
+                payload.DisplayName,
+                payload.AvatarUrl,
+                ct);
 
-	public record GooglePayload(string Email, string? DisplayName, string? AvatarUrl, AuthMode Mode);
+            await uow.CommitAsync(ct);
+            return Ok(new EnsureUserResponse(userDto, isNew));
+        }
+        catch (Exception ex)
+        {
+            await uow.RollbackAsync();
+            Console.WriteLine($"🔥 AutoEnsure failed: {ex.Message}");
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
+    public record GooglePayload(string Email, string? DisplayName, string? AvatarUrl, AuthMode Mode);
 }
