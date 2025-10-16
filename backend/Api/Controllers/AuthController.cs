@@ -10,9 +10,9 @@ namespace Backend.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AuthService _auth;
-    private readonly Func<IUserRepo> _userRepoFactory;
+    private readonly Func<IUserRoleRepo> _userRepoFactory;
 
-    public AuthController(AuthService auth, Func<IUserRepo> userRepoFactory)
+    public AuthController(AuthService auth, Func<IUserRoleRepo> userRepoFactory)
     {
         _auth = auth;
         _userRepoFactory = userRepoFactory;

@@ -7,7 +7,7 @@ public interface IUnitOfWork : IAsyncDisposable
     Task RollbackAsync();
 
     // 會員 / 使用者
-    IUserRepo CreateUserRepo();
+    IUserRoleRepo CreateUserRepo();
     IRoleBasisRepo CreateRoleBasisRepo();
 
 

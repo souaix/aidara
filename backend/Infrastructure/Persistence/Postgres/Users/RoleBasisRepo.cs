@@ -2,20 +2,10 @@
 using Backend.Application.Contracts.Users;
 using Dapper;
 using Npgsql;
-using System.Data;
 
 public class RoleBasisRepo : IRoleBasisRepo
 {
-    private readonly NpgsqlConnection _conn;
-    private readonly IDbTransaction? _tx;
-
-    public RoleBasisRepo(NpgsqlConnection conn, IDbTransaction? tx = null)
-    {
-        _conn = conn;
-        _tx = tx;
-    }
-
-    public async Task<List<RoleBasisDto>> GetAllRolesAsync(CancellationToken ct)
+    public async Task<List<RoleBasisDto>> GetAllRolesAsync(IUowContext uow, CancellationToken ct)
     {
         const string sql = @"
             SELECT role_id AS RoleId,
@@ -27,11 +17,17 @@ public class RoleBasisRepo : IRoleBasisRepo
             FROM role_basis
             ORDER BY role_id;
         ";
-        var rows = await _conn.QueryAsync<RoleBasisDto>(sql, transaction: _tx);
+
+        var conn = (NpgsqlConnection)uow.Connection;
+        var rows = await conn.QueryAsync<RoleBasisDto>(
+            sql,
+            transaction: (NpgsqlTransaction?)uow.Transaction
+        );
+
         return rows.ToList();
     }
 
-    public async Task<RoleBasisDto?> GetRoleAsync(string roleId, CancellationToken ct)
+    public async Task<RoleBasisDto?> GetRoleAsync(IUowContext uow, string roleId, CancellationToken ct)
     {
         const string sql = @"
             SELECT role_id AS RoleId,
@@ -43,6 +39,12 @@ public class RoleBasisRepo : IRoleBasisRepo
             FROM role_basis
             WHERE role_id = @roleId;
         ";
-        return await _conn.QueryFirstOrDefaultAsync<RoleBasisDto>(sql, new { roleId }, _tx);
+
+        var conn = (NpgsqlConnection)uow.Connection;
+        return await conn.QueryFirstOrDefaultAsync<RoleBasisDto>(
+            sql,
+            new { roleId },
+            (NpgsqlTransaction?)uow.Transaction
+        );
     }
 }

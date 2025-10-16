@@ -137,4 +137,68 @@ public class AccountController : Controller
 	{
 		return View("BeABoss"); // 對應 Views/Account/BeABoss.cshtml
 	}
+
+    [Authorize]
+    [HttpGet]
+    public async Task<IActionResult> RefreshClaims(string returnUrl = "/")
+    {
+        Console.WriteLine("🔥 RefreshClaims triggered by " + User.Identity?.Name);
+
+        // 1) 取目前登入者 UserId
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return LocalRedirect("/");
+
+        // 2) 呼叫 Backend.Api 拿最新的 Profile 與 Role
+        var client = _httpClientFactory.CreateClient("BackendApi");
+
+        var profileResp = await client.GetAsync($"/api/BossInfo/user/{userId}");
+        if (!profileResp.IsSuccessStatusCode) return LocalRedirect("/");
+
+        var roleResp = await client.GetAsync($"/api/BossInfo/role/{userId}");
+        if (!roleResp.IsSuccessStatusCode) return LocalRedirect("/");
+
+        var profileJson = await profileResp.Content.ReadAsStringAsync();
+        var roleJson = await roleResp.Content.ReadAsStringAsync();
+
+        // 你已有對應 DTO；這裡簡化成 dynamic 讀值
+        using var doc1 = JsonDocument.Parse(profileJson);
+        using var doc2 = JsonDocument.Parse(roleJson);
+
+        var email = doc1.RootElement.GetProperty("email").GetString() ?? "";
+        var displayName = doc1.RootElement.GetProperty("displayName").GetString() ?? email;
+        var avatarUrl = doc1.RootElement.TryGetProperty("avatarUrl", out var av) ? av.GetString() ?? "" : "";
+        var roleId = doc2.RootElement.GetProperty("roleId").GetString() ?? "UNVERIFYBOSS";
+
+        // 3) 重新簽 Cookie（帶入最新 Role）
+        var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+        new Claim(ClaimTypes.Email, email),
+        new Claim(ClaimTypes.Name, displayName),
+    };
+        if (!string.IsNullOrWhiteSpace(avatarUrl)) claims.Add(new Claim("avatar_url", avatarUrl));
+
+        // 重要：加入角色
+        claims.Add(new Claim(ClaimTypes.Role, roleId));
+
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+        var id = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(id),
+            new AuthenticationProperties { IsPersistent = true });
+
+        Console.WriteLine($"ProfileResp: {profileResp.StatusCode}");
+        Console.WriteLine($"RoleResp: {roleResp.StatusCode}");
+        var body1 = await profileResp.Content.ReadAsStringAsync();
+        var body2 = await roleResp.Content.ReadAsStringAsync();
+        Console.WriteLine("PROFILE_JSON => " + body1);
+        Console.WriteLine("ROLE_JSON => " + body2);
+
+
+        // 4) 導回
+        return LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+    }
 }

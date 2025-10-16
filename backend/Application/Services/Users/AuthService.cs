@@ -14,7 +14,7 @@ public class AuthService
 
 	public async Task<(UserDto User, bool IsNew)> EnsureUserForGoogleAutoAsync(
 		string email, string? displayName, string? avatarUrl,
-		Func<IUserRepo> repoFactory, CancellationToken ct)
+		Func<IUserRoleRepo> repoFactory, CancellationToken ct)
 	{
 		await _uow.BeginAsync(ct);
 		try

@@ -226,6 +226,8 @@
                     }
                     alert("註冊完成！");
                     bootstrap.Modal.getInstance(document.getElementById("registerModal"))?.hide();
+                    window.location.href = `/Account/RefreshClaims?returnUrl=${encodeURIComponent('/BossServices/Beaboss')}`;
+
                 } catch (err) {
                     console.error(err);
                     alert(err.message || "送出失敗，請稍後再試");
@@ -238,7 +240,7 @@
                 if (!catList) return;
                 catList.innerHTML = '<li class="list-group-item text-muted">載入中...</li>';
                 try {
-                    const res = await fetch(`${API_BASE}/api/BossServices/categories`);
+                const res = await fetch(`${API_BASE}/api/ServicesItem/categories`);
                     if (!res.ok) throw new Error(res.status);
                     categories = await res.json();
                     catList.innerHTML = "";

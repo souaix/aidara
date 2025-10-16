@@ -5,6 +5,7 @@ using Backend.Application.Services.Users;
 using Backend.Application.Wallet;
 using Backend.Domain.Wallet;
 using Backend.Infrastructure.Persistence.Postgres;
+
 using Infrastructure.Persistence.Mock;
 using Npgsql;
 using System.Text.Json.Serialization;
@@ -49,7 +50,7 @@ builder.Services.AddScoped<IUnitOfWork>(sp =>
 builder.Services.AddScoped<Func<IUnitOfWork>>(sp => () => sp.GetRequiredService<IUnitOfWork>());
 
 // 提供「工廠」，讓 Service 可以在同一個 UoW 下建立 Repo
-builder.Services.AddScoped<Func<IUserRepo>>(sp => () =>
+builder.Services.AddScoped<Func<IUserRoleRepo>>(sp => () =>
 {
     var uow = (UnitOfWork)sp.GetRequiredService<IUnitOfWork>();
     return uow.CreateUserRepo();
@@ -57,6 +58,9 @@ builder.Services.AddScoped<Func<IUserRepo>>(sp => () =>
 
 // 應用服務
 builder.Services.AddScoped<AuthService>();
+
+//以下未確認
+
 builder.Services.AddScoped<WalletService>();
 builder.Services.AddScoped<IWalletQueryRepo, WalletQueryRepo>();
 
