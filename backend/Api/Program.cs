@@ -2,136 +2,132 @@
 using Backend.Application.Ports;
 using Backend.Application.Services.Boss;
 using Backend.Application.Services.Users;
-
-
+using Backend.Application.Shared;
 using Backend.Infrastructure.Persistence.Postgres;
-
 using Infrastructure.Persistence.Mock;
+using Infrastructure.Persistence.Shared;   // 放 PostgreSqlUnitOfWorkFactory
 using Npgsql;
+using System.Reflection;
 using System.Text.Json.Serialization;
 
-// 在建構 Host 前手動設定環境
 #if DEBUG
 Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
 #else
 Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
 #endif
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-    .AddEnvironmentVariables();
+	.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+	.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+	.AddEnvironmentVariables();
 
-// ========= 連線字串 =========
+// ========= Connection =========
 var connString = builder.Configuration.GetConnectionString("Postgres");
 
-// ========= Npgsql DataSource (9.x 正確寫法) =========
-var dsBuilder = new NpgsqlDataSourceBuilder(connString);
-dsBuilder.MapEnum<TxType>("TX_TYPE");   // ★ PG ENUM 名稱必須與 DB 一致
-var dataSource = dsBuilder.Build();
+// PostgreSQL UnitOfWork Factory（跨資料庫統一介面）
+builder.Services.AddSingleton<IUnitOfWorkFactory>(
+	_ => new PostgreSqlUnitOfWorkFactory(connString));
 
-// 註冊唯一 DataSource
-builder.Services.AddSingleton(dataSource);
+// 若仍需要 DataSource 供 Dapper / Repo 使用，可保留
+builder.Services.AddSingleton(new NpgsqlDataSourceBuilder(connString).Build());
 
-// ========= Repos / Services =========
-builder.Services.AddScoped<IListingRepo, ListingRepo>();
+// ========= Scrutor 掃描 =========
+var appAsm = Assembly.Load("Backend.Application");
+var infraAsm = Assembly.Load("Backend.Infrastructure");
 
-//// UnitOfWork：每個 scope 建立一個交易上下文
-//builder.Services.AddScoped<IUnitOfWork>(sp =>
-//    new UnitOfWork(
-//        sp.GetRequiredService<NpgsqlDataSource>(),
-//        sp  // 把 ServiceProvider 傳進去
-//    ));
+// ===== Repository 掃描 =====
+#if DEBUG
+bool IsRepoClass(Type t) =>
+	t.IsClass && !t.IsAbstract &&
+	(t.Name.EndsWith("Repo", StringComparison.Ordinal) ||
+	 t.Name.EndsWith("Repository", StringComparison.Ordinal));
 
+bool IsMockNs(string? ns) =>
+	ns is not null &&
+	(ns.Contains(".Mock.", StringComparison.Ordinal) || ns.EndsWith(".Mock", StringComparison.Ordinal));
 
-//builder.Services.AddScoped<Func<IUnitOfWork>>(sp => () => sp.GetRequiredService<IUnitOfWork>());
+var mockRepoTypes = infraAsm.GetTypes().Where(t => IsRepoClass(t) && IsMockNs(t.Namespace));
+var mockInterfaceSet = new HashSet<Type>(mockRepoTypes.SelectMany(t => t.GetInterfaces()));
 
-//// 提供「工廠」，讓 Service 可以在同一個 UoW 下建立 Repo
-//builder.Services.AddScoped<Func<IUserRoleRepo>>(sp => () =>
-//{
-//    var uow = (UnitOfWork)sp.GetRequiredService<IUnitOfWork>();
-//    return uow.CreateUserRepo();
-//});
+builder.Services.Scan(scan => scan
+	.FromAssemblies(infraAsm)
+	.AddClasses(c => c.Where(t =>
+		IsRepoClass(t) &&
+		t.Namespace!.StartsWith("Infrastructure.Persistence.", StringComparison.Ordinal) &&
+		!IsMockNs(t.Namespace) &&
+		!t.GetInterfaces().Any(i => mockInterfaceSet.Contains(i))
+	))
+	.AsImplementedInterfaces()
+	.WithScopedLifetime());
 
+builder.Services.Scan(scan => scan
+	.FromAssemblies(infraAsm)
+	.AddClasses(c => c.Where(t => IsRepoClass(t) && IsMockNs(t.Namespace)))
+	.AsImplementedInterfaces()
+	.WithScopedLifetime());
+#else
+builder.Services.Scan(scan => scan
+    .FromAssemblies(infraAsm)
+    .AddClasses(c => c.Where(t =>
+        t.IsClass && !t.IsAbstract &&
+        (t.Name.EndsWith("Repo", StringComparison.Ordinal) ||
+         t.Name.EndsWith("Repository", StringComparison.Ordinal)) &&
+        t.Namespace is not null &&
+        t.Namespace.StartsWith("Infrastructure.Persistence.", StringComparison.Ordinal) &&
+        !t.Namespace.Contains(".Mock", StringComparison.Ordinal)))
+    .AsImplementedInterfaces()
+    .WithScopedLifetime());
+#endif
 
+// ===== Application Services =====
+builder.Services.Scan(scan => scan
+	.FromAssemblies(appAsm)
+	.AddClasses(c => c.Where(t =>
+		t.Namespace is not null &&
+		t.Namespace.StartsWith("Application.", StringComparison.Ordinal) &&
+		t.Name.EndsWith("Service", StringComparison.Ordinal)))
+	.AsImplementedInterfaces()
+	.WithScopedLifetime());
 
-// 應用服務
-
-
-builder.Services.AddScoped<IRoleBasisRepo, RoleBasisRepo>();
-builder.Services.AddScoped<IUserRepo, UserRepo>();
-builder.Services.AddScoped<IUserRoleRepo, UserRoleRepo>();
-builder.Services.AddScoped<AuthService>();
-
-//以下未確認
-builder.Services.AddScoped<AuthService>();
-
-
-
-builder.Services.AddScoped<ILocationRepo, LocationRepo>();
-
-builder.Services.AddScoped<BossInfoQuestionnaireService>();
-builder.Services.AddScoped<CustomerServiceQuestionnaireService>();
-
-builder.Services.AddScoped<IServiceStatService, ServiceStatService>();
-
-if (builder.Environment.IsDevelopment())
-{	
-	builder.Services.AddSingleton<IServiceStatRepo, MockServiceStatRepo>();
-	builder.Services.AddScoped<IUserServiceRepo, MockUserServiceRepo>();
-	builder.Services.AddScoped<IServiceRepo, MockServiceRepo>();
-    builder.Services.AddScoped<IBossStoreRepo, MockBossStoreRepo>();
-    builder.Services.AddSingleton<ICustomerServiceRequestRepo, MockCustomerServiceRequestRepo>();
-
-}
-else
-{
-	builder.Services.AddScoped<IServiceStatRepo, ServiceStatRepo>();
-	builder.Services.AddScoped<IUserServiceRepo, UserServiceRepo>();
-	builder.Services.AddScoped<IServiceRepo, ServiceRepo>();
-    builder.Services.AddScoped<IBossStoreRepo, BossStoreRepo>();
-    builder.Services.AddSingleton<ICustomerServiceRequestRepo, CustomerServiceRequestRepo>();
-}
-
+builder.Services.Scan(scan => scan
+	.FromAssemblies(appAsm)
+	.AddClasses(c => c.Where(t =>
+		t.Namespace is not null &&
+		t.Namespace.StartsWith("Application.", StringComparison.Ordinal) &&
+		t.Name.EndsWith("Service", StringComparison.Ordinal)))
+	.AsSelf()
+	.WithScopedLifetime());
 
 // ========= MVC / JSON / Swagger / CORS =========
 builder.Services
-    .AddControllers()
-    .AddJsonOptions(opt =>
-    {
-        // 讓 Enum 輸出為字串而不是數字
-        opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-    });
+	.AddControllers()
+	.AddJsonOptions(opt =>
+	{
+		opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+	});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-
 
 builder.Services.AddCors(options =>
 {
 	options.AddPolicy("AllowFrontendDev", policy =>
 	{
 		policy
-			.WithOrigins("https://localhost:7291")  // 前端網址（你開發用的）
+			.WithOrigins("https://localhost:7291")
 			.AllowAnyHeader()
 			.AllowAnyMethod()
 			.AllowCredentials();
 	});
 });
 
-
-
 // ========= Pipeline =========
 var app = builder.Build();
 app.UseHttpsRedirection();
-
 app.UseRouting();
 app.UseCors("AllowFrontendDev");
-
 
 app.UseSwagger();
 app.UseSwaggerUI();
