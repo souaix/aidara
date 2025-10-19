@@ -37,6 +37,8 @@ builder.Services.AddSingleton(new NpgsqlDataSourceBuilder(connString).Build());
 var appAsm = Assembly.Load("Backend.Application");
 var infraAsm = Assembly.Load("Backend.Infrastructure");
 
+
+
 // ===== Repository 掃描 =====
 #if DEBUG
 bool IsRepoClass(Type t) =>
@@ -77,7 +79,7 @@ builder.Services.Scan(scan => scan
         (t.Name.EndsWith("Repo", StringComparison.Ordinal) ||
          t.Name.EndsWith("Repository", StringComparison.Ordinal)) &&
         t.Namespace is not null &&
-        t.Namespace.StartsWith("Infrastructure.Persistence.", StringComparison.Ordinal) &&
+        t.Namespace.StartsWith("Backend.Infrastructure.Persistence.", StringComparison.Ordinal) &&
         !t.Namespace.Contains(".Mock", StringComparison.Ordinal)))
     .AsImplementedInterfaces()
     .WithScopedLifetime());

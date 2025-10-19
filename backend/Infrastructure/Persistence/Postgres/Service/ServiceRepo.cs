@@ -1,10 +1,10 @@
 ﻿// Infrastructure/Persistence/Postgres/ServiceRepo.cs
 using System.Data;
-using Backend.Application.Ports.Service;
+using Backend.Application.Ports;
 using Backend.Application.ViewModels.Services;
 using Dapper;
 
-namespace Backend.Infrastructure.Persistence.Postgres.Service;
+namespace Backend.Infrastructure.Persistence.Postgres;
 
 public sealed class ServiceRepo : IServiceRepo
 {

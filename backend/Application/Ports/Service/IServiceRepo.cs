@@ -2,7 +2,7 @@
 using System.Data;
 using Backend.Application.ViewModels.Services;
 
-namespace Backend.Application.Ports.Service;
+namespace Backend.Application.Ports;
 
 public interface IServiceRepo
 {
