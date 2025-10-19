@@ -1,4 +1,6 @@
-﻿using Backend.Application.Ports;
+﻿// Backend.Api/Controllers/ServicesItemController.cs
+using Backend.Application.Ports.Service;
+using Backend.Application.Shared;
 using Backend.Application.ViewModels.Services;
 using Backend.Infrastructure.Localization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,11 +11,13 @@ namespace Backend.Api.Controllers
     [Route("api/[controller]")]
     public class ServicesItemController : ControllerBase
     {
-        private readonly IUnitOfWork _uow;
+        private readonly IUnitOfWorkFactory _uowFactory;
+        private readonly IServiceRepo _serviceRepo;
 
-        public ServicesItemController(IUnitOfWork uow)
+        public ServicesItemController(IUnitOfWorkFactory uowFactory, IServiceRepo serviceRepo)
         {
-            _uow = uow;
+            _uowFactory = uowFactory;
+            _serviceRepo = serviceRepo;
         }
 
         /// <summary>
@@ -22,12 +26,16 @@ namespace Backend.Api.Controllers
         [HttpGet("categories")]
         public async Task<ActionResult<List<ServiceCategoryVm>>> GetCategories(CancellationToken ct)
         {
-            string lang = LanguageHelper.DetectLanguage(HttpContext);
-            var repo = _uow.CreateServiceRepo();
-            var categories = await repo.GetAllCategoriesAsync(lang,ct);
+            // 取得語系
+            var lang = LanguageHelper.DetectLanguage(HttpContext);
+
+            // 開啟 UoW (查詢不需交易)
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
+
+            // 查詢資料
+            var categories = await _serviceRepo.GetAllCategoriesAsync(uow.Connection, uow.Transaction, lang, ct);
+
             return Ok(categories);
         }
-
-
     }
 }

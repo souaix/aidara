@@ -7,8 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Filters\" />
-    <Folder Include="Mapping\" />
+    <Compile Remove="Filters\**" />
+    <Compile Remove="Mapping\**" />
+    <Content Remove="Filters\**" />
+    <Content Remove="Mapping\**" />
+    <EmbeddedResource Remove="Filters\**" />
+    <EmbeddedResource Remove="Mapping\**" />
+    <None Remove="Filters\**" />
+    <None Remove="Mapping\**" />
   </ItemGroup>
 
   <ItemGroup>

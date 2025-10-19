@@ -1,24 +1,37 @@
-﻿using Backend.Application.Contracts.Users;
+﻿// Backend.Api/Controllers/BossInfoController.cs
 using Backend.Application.Ports;
+
 using Backend.Application.Services.Boss;
+using Backend.Application.Shared;
 using Backend.Application.ViewModels;
 using Backend.Application.ViewModels.Services;
-using Backend.Contracts.Users;
-using Backend.Domain.Entities;
-using Backend.Infrastructure.Localization;
 using Microsoft.AspNetCore.Mvc;
+
 namespace Backend.Api.Controllers
 {
-	[ApiController]
+    [ApiController]
     [Route("api/[controller]")]
     public class BossInfoController : ControllerBase
     {
+        private readonly IUnitOfWorkFactory _uowFactory;
+        private readonly IBossInfoRepo _bossInfoRepo;
+        private readonly IBossServiceStatRepo _serviceStatRepo;
+        private readonly IBossStoreRepo _bossStoreRepo;
+     
         private readonly BossInfoQuestionnaireService _svc;
-        private readonly IUnitOfWork _uow;
 
-        public BossInfoController(IUnitOfWork uow, BossInfoQuestionnaireService svc)
+        public BossInfoController(
+            IUnitOfWorkFactory uowFactory,
+            IBossInfoRepo bossInfoRepo,
+            IBossServiceStatRepo serviceStatRepo,
+            IBossStoreRepo bossStoreRepo,
+            BossInfoQuestionnaireService svc)
         {
-            _uow = uow;
+            _uowFactory = uowFactory;
+            _bossInfoRepo = bossInfoRepo;
+            _serviceStatRepo = serviceStatRepo;
+            _bossStoreRepo = bossStoreRepo;
+       
             _svc = svc;
         }
 
@@ -30,96 +43,6 @@ namespace Backend.Api.Controllers
         {
             await _svc.SubmitAsync(dto, ct);
             return NoContent();
-
-        }
-
-
-        //[HttpGet("user/{userId:guid}")]
-        //public async Task<IActionResult> GetUserProfile(Guid userId, CancellationToken ct)
-        //{
-        //    var userRepo = _uow.CreateUserRepo();
-
-        //    var user = await userRepo.GetUserProfileAsync(userId, ct);
-        //    var role = await userRepo.GetUserRoleAsync(userId, ct);
-
-        //    if (user == null)
-        //        return NotFound();
-
-        //    var dto = new
-        //    {
-        //        user.UserId,
-        //        user.Email,
-        //        DisplayName = role?.RoleId?.Contains("BOSS") == true
-        //            ? user.BossName
-        //            : user.DisplayName,
-        //        user.AvatarUrl
-        //    };
-
-        //    return Ok(dto);
-        //}
-
-        //[HttpGet("role/{userId:guid}")]
-        //public async Task<IActionResult> GetUserRole(Guid userId, CancellationToken ct)
-        //{
-        //    var repo = _uow.CreateUserRepo();
-        //    var roles = await repo.GetUserRolesAsync(userId, ct);
-
-        //    if (roles is null || !roles.Any())
-        //        return Ok(new UserRoleDto { RoleId = "UNVERIFYBOSS", RoleName = "未認證" });
-
-        //    var mainRole = roles.First();
-        //    return Ok(new UserRoleDto
-        //    {
-        //        RoleId = mainRole.RoleId,
-        //        RoleName = mainRole.RoleId == "UNVERIFYBOSS" ? "未認證" : mainRole.RoleName
-        //    });
-        //}
-
-        // 🔹 3) 地址資訊（含地名轉換）
-        //[HttpGet("address/{userId:guid}")]
-        //public async Task<IActionResult> GetUserAddress(Guid userId, CancellationToken ct)
-        //{
-        //    var repo = _uow.CreateBossInfoRepo();
-        //    var addr = await repo.GetBossAddressAsync(userId, ct);
-
-        //    if (addr is null)
-        //        return Ok(new BossUserAddressDto { CityName = "", DistrictName = "", Phone = "", Street = "", AddressNo = "" });
-
-        //    return Ok(addr);
-        //}
-
-
-        /// <summary>
-        /// 取得使用者已勾選的服務項目
-        /// </summary>
-        [HttpGet("user-services/{userId:guid}")]
-        public async Task<ActionResult<List<UserServiceItemVm>>> GetUserServices(Guid userId, CancellationToken ct)
-        {
-            var repo = _uow.CreateUserServiceRepo();
-            var items = await repo.GetUserServicesAsync(userId, ct);
-            return Ok(items);
-        }
-
-        /// <summary>
-        /// 更新使用者的服務項目 (覆蓋舊的)
-        /// </summary>
-        [HttpPost("user-services/{userId:guid}")]
-        public async Task<IActionResult> UpdateUserServices(Guid userId, [FromBody] List<Guid> itemIds, CancellationToken ct)
-        {
-            await _uow.BeginAsync(ct);
-            try
-            {
-                var repo = _uow.CreateUserServiceRepo();
-                await repo.UpdateUserServicesAsync(userId, itemIds, ct);
-
-                await _uow.CommitAsync(ct);
-                return NoContent();
-            }
-            catch
-            {
-                await _uow.RollbackAsync();
-                throw;
-            }
         }
 
         /// <summary>
@@ -128,8 +51,8 @@ namespace Backend.Api.Controllers
         [HttpGet("stats/{itemId:guid}")]
         public async Task<ActionResult<List<ServiceStatVm>>> GetServiceStats(Guid itemId, CancellationToken ct)
         {
-            var repo = _uow.CreateServiceStatRepo();
-            var stats = await repo.GetServiceStatsAsync(itemId, ct);
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
+            var stats = await _serviceStatRepo.GetServiceStatsAsync(uow.Connection, uow.Transaction, itemId, ct);
             return Ok(stats);
         }
 
@@ -143,8 +66,8 @@ namespace Backend.Api.Controllers
             [FromQuery] string? districtId,
             CancellationToken ct)
         {
-            var repo = _uow.CreateBossStoreRepo();
-            var stores = await repo.GetStoresByRegionAsync(itemId, cityId, districtId, ct);
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
+            var stores = await _bossStoreRepo.GetStoresByRegionAsync(uow.Connection, uow.Transaction, itemId, cityId, districtId, ct);
             return Ok(stores);
         }
 
@@ -154,9 +77,11 @@ namespace Backend.Api.Controllers
         [HttpGet("store/{userId:guid}")]
         public async Task<ActionResult<StoreDetailVm>> GetStoreDetail(Guid userId, CancellationToken ct)
         {
-            var repo = _uow.CreateBossStoreRepo();
-            var detail = await repo.GetStoreDetailAsync(userId, ct);
-            if (detail is null) return NotFound();
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
+            var detail = await _bossStoreRepo.GetStoreDetailAsync(uow.Connection, uow.Transaction, userId, ct);
+            if (detail is null)
+                return NotFound();
+
             return Ok(detail);
         }
     }

@@ -1,6 +1,8 @@
-﻿using Backend.Application.Ports;
-using Backend.Contracts.Users;
-
+﻿// Application/Services/Users/AuthService.cs
+using System.Data;
+using Backend.Application.Ports;
+using Backend.Application.Shared;
+using Backend.Contracts.User;
 using Backend.Domain.Entities;
 
 namespace Backend.Application.Services.Users;
@@ -9,85 +11,86 @@ public enum AuthMode { Login, Register }
 
 public class AuthService
 {
+    private readonly IUnitOfWorkFactory _uowFactory;
     private readonly IUserRepo _userRepo;
     private readonly IUserRoleRepo _userRoleRepo;
 
-
     public AuthService(
+        IUnitOfWorkFactory uowFactory,
         IUserRepo userRepo,
         IUserRoleRepo userRoleRepo)
     {
+        _uowFactory = uowFactory;
         _userRepo = userRepo;
         _userRoleRepo = userRoleRepo;
-      
     }
 
     public async Task<(UserDto User, bool IsNew)> EnsureUserForGoogleAutoAsync(
-        IUowContext uow,
         string email,
         string? displayName,
         string? avatarUrl,
         CancellationToken ct)
     {
-        // 1) 既有使用者
-        var existing = await _userRepo.GetByEmailAsync(uow, email, ct);
-        if (existing is not null)
-        {
-            var roles = await _userRoleRepo.GetUserRolesAsync(uow, existing.UserId, ct);
+        await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
 
-            var dto = new UserDto
+        try
+        {
+            // 1) 查詢既有使用者
+            var existing = await _userRepo.GetByEmailAsync(uow.Connection, uow.Transaction, email, ct);
+            if (existing is not null)
             {
-                UserId = existing.UserId,
-                Email = existing.Email,
-                DisplayName = existing.DisplayName,
-                AvatarUrl = existing.AvatarUrl,
-                Roles = roles.Select(r => r.RoleId).ToList(),
-                BossName = existing.BossName
+                var roles = await _userRoleRepo.GetUserRolesAsync(uow.Connection, uow.Transaction, existing.UserId, ct);
+
+                var dto = new UserDto
+                {
+                    UserId = existing.UserId,
+                    Email = existing.Email,
+                    DisplayName = existing.DisplayName,
+                    AvatarUrl = existing.AvatarUrl,
+                    Roles = roles.Select(r => r.RoleId).ToList(),
+                    BossName = existing.BossName
+                };
+
+                await _userRepo.TouchLastSeenAsync(uow.Connection, uow.Transaction, existing.UserId, ct);
+                await uow.CommitAsync(ct);
+                return (dto, false);
+            }
+
+            // 2) 新使用者建立
+            var now = DateTime.UtcNow;
+            var created = await _userRepo.InsertAsync(uow.Connection, uow.Transaction, new User
+            {
+                UserId = Guid.NewGuid(),
+                Email = email,
+                DisplayName = displayName ?? email,
+                AvatarUrl = avatarUrl ?? "",
+                IsActive = true,
+                CreatedAt = now,
+                UpdatedAt = now,
+                BossName = displayName ?? email
+            }, ct);
+
+            // 3) 給預設角色
+            await _userRoleRepo.AddUserRoleAsync(uow.Connection, uow.Transaction, created.UserId, "CUSTOMER", null, ct);
+
+            // 4) 回傳 DTO
+            var newDto = new UserDto
+            {
+                UserId = created.UserId,
+                Email = created.Email,
+                DisplayName = created.DisplayName,
+                AvatarUrl = created.AvatarUrl,
+                Roles = new List<string> { "CUSTOMER" },
+                BossName = created.DisplayName
             };
 
-            await _userRepo.TouchLastSeenAsync(uow, existing.UserId, ct);
-            return (dto, false);
+            await uow.CommitAsync(ct);
+            return (newDto, true);
         }
-
-        // 2) 新使用者
-        var now = DateTime.UtcNow;
-        var created = await _userRepo.InsertAsync(uow, new User
+        catch
         {
-            UserId = Guid.NewGuid(),
-            Email = email,
-            DisplayName = displayName ?? email,
-            AvatarUrl = avatarUrl ?? "",
-            IsActive = true,
-            CreatedAt = now,
-            UpdatedAt = now,
-            BossName = displayName ?? email
-        }, ct);
-
-        // 3) 建立錢包
-        //await _walletRepo.InsertAsync(uow, new CreateLedgerRequest(
-        //    UserId: created.UserId,
-        //    Currency: "Silver",
-        //    Amount: 99999,
-        //    TxType: "DEPOSIT",
-        //    OrderId: null,
-        //    Meta: "{\"reason\":\"signup_bonus\"}",
-        //    RejectNegative: false
-        //), ct);
-
-        // 4) 給預設角色
-        await _userRoleRepo.AddUserRoleAsync(uow, created.UserId, "CUSTOMER", null, ct);
-
-        // 5) 組含角色的 UserDto
-        var newDto = new UserDto
-        {
-            UserId = created.UserId,
-            Email = created.Email,
-            DisplayName = created.DisplayName,
-            AvatarUrl = created.AvatarUrl,
-            Roles = new List<string> { "CUSTOMER" },
-            BossName = created.DisplayName
-        };
-
-        return (newDto, true);
+            await uow.RollbackAsync(ct);
+            throw;
+        }
     }
 }

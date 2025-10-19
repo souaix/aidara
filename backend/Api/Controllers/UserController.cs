@@ -1,8 +1,9 @@
-﻿using Backend.Application.Ports;
+﻿// Backend.Api/Controllers/UserController.cs
+using System.Data;
+using Backend.Application.Ports;
 using Backend.Domain.Entities;
-using Backend.Infrastructure.Persistence.Postgres;
+using Backend.Application.Shared;
 using Microsoft.AspNetCore.Mvc;
-using Npgsql;
 
 namespace Backend.Api.Controllers
 {
@@ -10,12 +11,12 @@ namespace Backend.Api.Controllers
     [Route("api/[controller]")]
     public class UserController : ControllerBase
     {
-        private readonly NpgsqlDataSource _ds;
+        private readonly IUnitOfWorkFactory _uowFactory;
         private readonly IUserRepo _userRepo;
 
-        public UserController(NpgsqlDataSource ds, IUserRepo userRepo)
+        public UserController(IUnitOfWorkFactory uowFactory, IUserRepo userRepo)
         {
-            _ds = ds;
+            _uowFactory = uowFactory;
             _userRepo = userRepo;
         }
 
@@ -28,24 +29,9 @@ namespace Backend.Api.Controllers
             if (string.IsNullOrWhiteSpace(email))
                 return BadRequest("Email 不可為空");
 
-            await using var uow = new _UnitOfWork(_ds);
-            var db = await uow.BeginAsync(ct);
-
-            try
-            {
-                var user = await _userRepo.GetByEmailAsync(db, email, ct);
-                await uow.CommitAsync(ct);
-
-                if (user is null)
-                    return NotFound();
-
-                return Ok(user);
-            }
-            catch
-            {
-                await uow.RollbackAsync();
-                throw;
-            }
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
+            var user = await _userRepo.GetByEmailAsync(uow.Connection, uow.Transaction, email, ct);
+            return user is null ? NotFound() : Ok(user);
         }
 
         /// <summary>
@@ -54,24 +40,9 @@ namespace Backend.Api.Controllers
         [HttpGet("{userId:guid}")]
         public async Task<IActionResult> GetUserProfile(Guid userId, CancellationToken ct)
         {
-            await using var uow = new _UnitOfWork(_ds);
-            var db = await uow.BeginAsync(ct);
-
-            try
-            {
-                var user = await _userRepo.GetUserProfileAsync(db, userId, ct);
-                await uow.CommitAsync(ct);
-
-                if (user is null)
-                    return NotFound();
-
-                return Ok(user);
-            }
-            catch
-            {
-                await uow.RollbackAsync();
-                throw;
-            }
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
+            var user = await _userRepo.GetUserProfileAsync(uow.Connection, uow.Transaction, userId, ct);
+            return user is null ? NotFound() : Ok(user);
         }
 
         /// <summary>
@@ -83,18 +54,16 @@ namespace Backend.Api.Controllers
             if (string.IsNullOrWhiteSpace(user.Email))
                 return BadRequest("Email 不可為空");
 
-            await using var uow = new _UnitOfWork(_ds);
-            var db = await uow.BeginAsync(ct);
-
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
             try
             {
-                var created = await _userRepo.InsertAsync(db, user, ct);
+                var created = await _userRepo.InsertAsync(uow.Connection, uow.Transaction, user, ct);
                 await uow.CommitAsync(ct);
                 return Ok(created);
             }
             catch
             {
-                await uow.RollbackAsync();
+                await uow.RollbackAsync(ct);
                 throw;
             }
         }
@@ -105,18 +74,16 @@ namespace Backend.Api.Controllers
         [HttpPost("{userId:guid}/touch")]
         public async Task<IActionResult> TouchLastSeen(Guid userId, CancellationToken ct)
         {
-            await using var uow = new _UnitOfWork(_ds);
-            var db = await uow.BeginAsync(ct);
-
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
             try
             {
-                await _userRepo.TouchLastSeenAsync(db, userId, ct);
+                await _userRepo.TouchLastSeenAsync(uow.Connection, uow.Transaction, userId, ct);
                 await uow.CommitAsync(ct);
                 return NoContent();
             }
             catch
             {
-                await uow.RollbackAsync();
+                await uow.RollbackAsync(ct);
                 throw;
             }
         }

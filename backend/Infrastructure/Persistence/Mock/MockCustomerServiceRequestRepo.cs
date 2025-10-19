@@ -1,10 +1,16 @@
-﻿using System.Collections.Concurrent;
+﻿// Infrastructure/Persistence/Mock/MockCustomerServiceRequestRepo.cs
+using System.Collections.Concurrent;
+using System.Data;
+using Backend.Application.Ports;
+using Backend.Application.ViewModels.Services;
 
-public class MockCustomerServiceRequestRepo : ICustomerServiceRequestRepo
+namespace Backend.Infrastructure.Persistence.Mock;
+
+public sealed class MockCustomerServiceRequestRepo : ICustomerServiceRequestRepo
 {
     private readonly ConcurrentBag<CustomerServiceRequestDto> _requests = new();
 
-    public Task InsertAsync(CustomerServiceRequestDto dto, CancellationToken ct)
+    public Task InsertAsync(IDbConnection conn, IDbTransaction? tx, CustomerServiceRequestDto dto, CancellationToken ct)
     {
         _requests.Add(dto);
         Console.WriteLine($"[Mock] 收到一筆 CustomerServiceRequest: " +
@@ -14,6 +20,6 @@ public class MockCustomerServiceRequestRepo : ICustomerServiceRequestRepo
         return Task.CompletedTask;
     }
 
-    // 測試時可拿來檢查結果
+    // 測試時可用來檢查結果
     public IEnumerable<CustomerServiceRequestDto> GetAll() => _requests;
 }

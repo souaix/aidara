@@ -1,5 +1,5 @@
 ﻿using System.Collections.Concurrent;
-
+namespace Backend.Infrastructure.Persistence.Mock;
 public class MockCustomerDemandRepo : ICustomerDemandRepo
 {
     // 簡單的 in-memory store（RequestId 當主鍵）

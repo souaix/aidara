@@ -1,6 +1,6 @@
 ﻿namespace Backend.Application.ViewModels.Services;
 
-public class UserServiceMethodVm
+public class BossServiceMethodVm
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }

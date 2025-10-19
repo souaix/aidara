@@ -1,9 +1,17 @@
-﻿using Backend.Application.Ports;
+﻿// Infrastructure/Persistence/Mock/MockServiceRepo.cs
+using System.Data;
+using Backend.Application.Ports.Service;
 using Backend.Application.ViewModels.Services;
 
-public class MockServiceRepo : IServiceRepo
+namespace Backend.Infrastructure.Persistence.Mock;
+
+public sealed class MockServiceRepo : IServiceRepo
 {
-    public Task<List<ServiceCategoryVm>> GetAllCategoriesAsync(string lang, CancellationToken ct)
+    public Task<List<ServiceCategoryVm>> GetAllCategoriesAsync(
+        IDbConnection conn,
+        IDbTransaction? tx,
+        string lang,
+        CancellationToken ct)
     {
         // 模擬語言切換
         bool isZh = lang.StartsWith("zh", StringComparison.OrdinalIgnoreCase);

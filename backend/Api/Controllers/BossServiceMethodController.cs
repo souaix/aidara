@@ -8,9 +8,9 @@ namespace Backend.Api.Controllers
     [Route("api/[controller]")]
     public class BossServiceMethodController : ControllerBase
     {
-        private readonly IUserServiceMethodRepo _repo;
+        private readonly IBossServiceMethodRepo _repo;
 
-        public BossServiceMethodController(IUserServiceMethodRepo repo)
+        public BossServiceMethodController(IBossServiceMethodRepo repo)
         {
             _repo = repo;
         }
@@ -19,9 +19,9 @@ namespace Backend.Api.Controllers
         /// 取得使用者的服務方式
         /// </summary>
         [HttpGet("{userId:guid}")]
-        public async Task<ActionResult<List<UserServiceMethodVm>>> GetUserMethods(Guid userId, CancellationToken ct)
+        public async Task<ActionResult<List<BossServiceMethodVm>>> GetBossMethods(Guid userId, CancellationToken ct)
         {
-            var items = await _repo.GetUserMethodsAsync(userId, ct);
+            var items = await _repo.GetBossMethodsAsync(userId, ct);
             return Ok(items);
         }
 
@@ -31,7 +31,7 @@ namespace Backend.Api.Controllers
         [HttpPost("{userId:guid}")]
         public async Task<IActionResult> UpdateUserMethods(Guid userId, [FromBody] List<string> methods, CancellationToken ct)
         {
-            await _repo.UpdateUserMethodsAsync(userId, methods, ct);
+            await _repo.UpdateBossMethodsAsync(userId, methods, ct);
             return NoContent();
         }
     }

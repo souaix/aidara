@@ -1,14 +1,14 @@
 ﻿// Infrastructure/Persistence/Postgres/UserRepo.cs
+using System.Data;
 using Backend.Application.Ports;
 using Backend.Domain.Entities;
 using Dapper;
-using Npgsql;
 
 namespace Backend.Infrastructure.Persistence.Postgres;
 
 public sealed class UserRepo : IUserRepo
 {
-    public async Task<User?> GetByEmailAsync(IUowContext uow, string email, CancellationToken ct)
+    public async Task<User?> GetByEmailAsync(IDbConnection conn, IDbTransaction? tx, string email, CancellationToken ct)
     {
         const string sql = """
             SELECT user_id     AS UserId,
@@ -26,16 +26,13 @@ public sealed class UserRepo : IUserRepo
             FROM user_basis
             WHERE email = @email
             LIMIT 1;
-            """;
-
-        var conn = (NpgsqlConnection)uow.Connection;
-        var tx = (NpgsqlTransaction?)uow.Transaction;
+        """;
 
         return await conn.QueryFirstOrDefaultAsync<User>(
             new CommandDefinition(sql, new { email }, tx, cancellationToken: ct));
     }
 
-    public async Task<User> InsertAsync(IUowContext uow, User user, CancellationToken ct)
+    public async Task<User> InsertAsync(IDbConnection conn, IDbTransaction? tx, User user, CancellationToken ct)
     {
         const string sql = """
             INSERT INTO user_basis
@@ -54,16 +51,13 @@ public sealed class UserRepo : IUserRepo
                       last_seen_at AS LastSeenAt,
                       created_at   AS CreatedAt,
                       updated_at   AS UpdatedAt;
-            """;
-
-        var conn = (NpgsqlConnection)uow.Connection;
-        var tx = (NpgsqlTransaction?)uow.Transaction;
+        """;
 
         return await conn.QuerySingleAsync<User>(
             new CommandDefinition(sql, user, tx, cancellationToken: ct));
     }
 
-    public async Task<User?> GetUserProfileAsync(IUowContext uow, Guid userId, CancellationToken ct)
+    public async Task<User?> GetUserProfileAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, CancellationToken ct)
     {
         const string sql = """
             SELECT user_id     AS UserId,
@@ -81,26 +75,20 @@ public sealed class UserRepo : IUserRepo
             FROM user_basis
             WHERE user_id = @userId
             LIMIT 1;
-            """;
-
-        var conn = (NpgsqlConnection)uow.Connection;
-        var tx = (NpgsqlTransaction?)uow.Transaction;
+        """;
 
         return await conn.QueryFirstOrDefaultAsync<User>(
             new CommandDefinition(sql, new { userId }, tx, cancellationToken: ct));
     }
 
-    public async Task TouchLastSeenAsync(IUowContext uow, Guid userId, CancellationToken ct)
+    public async Task TouchLastSeenAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, CancellationToken ct)
     {
         const string sql = """
             UPDATE user_basis
                SET last_seen_at = now(),
                    updated_at   = now()
              WHERE user_id = @userId;
-            """;
-
-        var conn = (NpgsqlConnection)uow.Connection;
-        var tx = (NpgsqlTransaction?)uow.Transaction;
+        """;
 
         await conn.ExecuteAsync(
             new CommandDefinition(sql, new { userId }, tx, cancellationToken: ct));

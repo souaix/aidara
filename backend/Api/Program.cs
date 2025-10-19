@@ -4,7 +4,7 @@ using Backend.Application.Services.Boss;
 using Backend.Application.Services.Users;
 using Backend.Application.Shared;
 using Backend.Infrastructure.Persistence.Postgres;
-using Infrastructure.Persistence.Mock;
+using Backend.Infrastructure.Persistence.Mock;
 using Infrastructure.Persistence.Shared;   // 放 PostgreSqlUnitOfWorkFactory
 using Npgsql;
 using System.Reflection;
@@ -52,15 +52,17 @@ var mockRepoTypes = infraAsm.GetTypes().Where(t => IsRepoClass(t) && IsMockNs(t.
 var mockInterfaceSet = new HashSet<Type>(mockRepoTypes.SelectMany(t => t.GetInterfaces()));
 
 builder.Services.Scan(scan => scan
-	.FromAssemblies(infraAsm)
-	.AddClasses(c => c.Where(t =>
-		IsRepoClass(t) &&
-		t.Namespace!.StartsWith("Infrastructure.Persistence.", StringComparison.Ordinal) &&
-		!IsMockNs(t.Namespace) &&
-		!t.GetInterfaces().Any(i => mockInterfaceSet.Contains(i))
-	))
-	.AsImplementedInterfaces()
-	.WithScopedLifetime());
+    .FromAssemblies(infraAsm)
+    .AddClasses(c => c.Where(t =>
+        IsRepoClass(t) &&
+        t.Namespace != null &&
+        t.Namespace.StartsWith("Backend.Infrastructure.Persistence.", StringComparison.Ordinal) &&
+        !IsMockNs(t.Namespace) &&
+        !t.GetInterfaces().Any(i => mockInterfaceSet != null && mockInterfaceSet.Contains(i))
+    ))
+    .AsImplementedInterfaces()
+    .WithScopedLifetime());
+
 
 builder.Services.Scan(scan => scan
 	.FromAssemblies(infraAsm)

@@ -1,8 +1,8 @@
-﻿using Backend.Application.Contracts.Users;
+﻿// Backend.Api/Controllers/UserRoleController.cs
+using Backend.Application.Contracts.User;
 using Backend.Application.Ports;
-using Backend.Infrastructure.Persistence.Postgres;
+using Backend.Application.Shared;
 using Microsoft.AspNetCore.Mvc;
-using Npgsql;
 
 namespace Backend.Api.Controllers
 {
@@ -10,16 +10,16 @@ namespace Backend.Api.Controllers
     [Route("api/[controller]")]
     public class UserRoleController : ControllerBase
     {
-        private readonly NpgsqlDataSource _ds;
+        private readonly IUnitOfWorkFactory _uowFactory;
         private readonly IUserRoleRepo _userRoleRepo;
         private readonly IRoleBasisRepo _roleBasisRepo;
 
         public UserRoleController(
-            NpgsqlDataSource ds,
+            IUnitOfWorkFactory uowFactory,
             IUserRoleRepo userRoleRepo,
             IRoleBasisRepo roleBasisRepo)
         {
-            _ds = ds;
+            _uowFactory = uowFactory;
             _userRoleRepo = userRoleRepo;
             _roleBasisRepo = roleBasisRepo;
         }
@@ -30,20 +30,9 @@ namespace Backend.Api.Controllers
         [HttpGet("{userId:guid}")]
         public async Task<ActionResult<List<UserRoleDto>>> GetUserRoles(Guid userId, CancellationToken ct)
         {
-            await using var uow = new _UnitOfWork(_ds);
-            var db = await uow.BeginAsync(ct);
-
-            try
-            {
-                var roles = await _userRoleRepo.GetUserRolesAsync(db, userId, ct);
-                await uow.CommitAsync(ct);
-                return Ok(roles);
-            }
-            catch
-            {
-                await uow.RollbackAsync();
-                throw;
-            }
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
+            var roles = await _userRoleRepo.GetUserRolesAsync(uow.Connection, uow.Transaction, userId, ct);
+            return Ok(roles);
         }
 
         /// <summary>
@@ -55,18 +44,16 @@ namespace Backend.Api.Controllers
             if (string.IsNullOrWhiteSpace(req.RoleId))
                 return BadRequest("RoleId 不可為空");
 
-            await using var uow = new _UnitOfWork(_ds);
-            var db = await uow.BeginAsync(ct);
-
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
             try
             {
-                await _userRoleRepo.AddUserRoleAsync(db, userId, req.RoleId, req.ExpireDate, ct);
+                await _userRoleRepo.AddUserRoleAsync(uow.Connection, uow.Transaction, userId, req.RoleId, req.ExpireDate, ct);
                 await uow.CommitAsync(ct);
                 return NoContent();
             }
             catch
             {
-                await uow.RollbackAsync();
+                await uow.RollbackAsync(ct);
                 throw;
             }
         }
@@ -77,18 +64,16 @@ namespace Backend.Api.Controllers
         [HttpDelete("{userId:guid}/{roleId}")]
         public async Task<IActionResult> RemoveUserRole(Guid userId, string roleId, CancellationToken ct)
         {
-            await using var uow = new _UnitOfWork(_ds);
-            var db = await uow.BeginAsync(ct);
-
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
             try
             {
-                await _userRoleRepo.RemoveUserRoleAsync(db, userId, roleId, ct);
+                await _userRoleRepo.RemoveUserRoleAsync(uow.Connection, uow.Transaction, userId, roleId, ct);
                 await uow.CommitAsync(ct);
                 return NoContent();
             }
             catch
             {
-                await uow.RollbackAsync();
+                await uow.RollbackAsync(ct);
                 throw;
             }
         }
@@ -99,20 +84,9 @@ namespace Backend.Api.Controllers
         [HttpGet("roles")]
         public async Task<ActionResult<List<RoleBasisDto>>> GetAllRoles(CancellationToken ct)
         {
-            await using var uow = new _UnitOfWork(_ds);
-            var db = await uow.BeginAsync(ct);
-
-            try
-            {
-                var roles = await _roleBasisRepo.GetAllRolesAsync(db, ct);
-                await uow.CommitAsync(ct);
-                return Ok(roles);
-            }
-            catch
-            {
-                await uow.RollbackAsync();
-                throw;
-            }
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
+            var roles = await _roleBasisRepo.GetAllRolesAsync(uow.Connection, uow.Transaction, ct);
+            return Ok(roles);
         }
     }
 
