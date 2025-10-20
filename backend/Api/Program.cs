@@ -90,7 +90,7 @@ builder.Services.Scan(scan => scan
 	.FromAssemblies(appAsm)
 	.AddClasses(c => c.Where(t =>
 		t.Namespace is not null &&
-		t.Namespace.StartsWith("Application.", StringComparison.Ordinal) &&
+		t.Namespace.StartsWith("Backend.Application.", StringComparison.Ordinal) &&
 		t.Name.EndsWith("Service", StringComparison.Ordinal)))
 	.AsImplementedInterfaces()
 	.WithScopedLifetime());
@@ -99,7 +99,7 @@ builder.Services.Scan(scan => scan
 	.FromAssemblies(appAsm)
 	.AddClasses(c => c.Where(t =>
 		t.Namespace is not null &&
-		t.Namespace.StartsWith("Application.", StringComparison.Ordinal) &&
+		t.Namespace.StartsWith("Backend.Application.", StringComparison.Ordinal) &&
 		t.Name.EndsWith("Service", StringComparison.Ordinal)))
 	.AsSelf()
 	.WithScopedLifetime());
