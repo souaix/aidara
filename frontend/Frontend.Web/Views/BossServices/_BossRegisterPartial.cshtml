@@ -110,35 +110,49 @@
                 <!-- Step 4：服務範圍 -->
                 <div id="step4" class="step d-none">
                     <h5>Step 4. 選擇服務範圍</h5>
-                    <div class="row mb-3">
+                    <div class="mb-3">
+                        <select id="citySelect" class="form-select">
+                            <option value="">請選擇縣市</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
                         <div class="col-md-6">
-                            <select id="citySelect" class="form-select">
-                                <option value="">請選擇縣市</option>
-                            </select>
+                            <div id="districtCheckboxes" class="border rounded p-2" style="max-height:250px;overflow:auto;">
+                                <div class="text-muted small">請先選擇縣市</div>
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <select id="districtSelect" class="form-select" multiple>
-                                <option value="">請先選擇縣市</option>
-                            </select>
+                            <div id="postalCheckboxes" class="border rounded p-2" style="max-height:250px;overflow:auto;">
+                                <div class="text-muted small">請先選擇行政區</div>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+
 
                 <!-- Step 5：服務據點 -->
                 <div id="step5" class="step d-none">
                     <h5>Step 5. 服務據點</h5>
                     <div class="row mb-2">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <select id="addrCity" class="form-select">
                                 <option value="">請選擇縣/市</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <select id="addrDistrict" class="form-select">
                                 <option value="">請先選擇縣市</option>
                             </select>
                         </div>
+                        <div class="col-md-4">
+                            <select id="addrPostal" class="form-select">
+                                <option value="">請先選擇行政區</option>
+                            </select>
+                        </div>
                     </div>
+
                     <div class="row mb-2">
                         <div class="col-md-8">
                             <input id="addrStreet" class="form-control" placeholder="路名 (STREET)" />
@@ -148,7 +162,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+
 
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="prevStep" disabled>上一步</button>

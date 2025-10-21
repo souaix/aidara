@@ -1,7 +1,7 @@
 ﻿// Infrastructure/Persistence/Postgres/LocationRepo.cs
 using System.Data;
 using Backend.Application.Ports;
-using Backend.Application.ViewModels.Services;
+using Backend.Application.ViewModels;
 using Dapper;
 
 namespace Backend.Infrastructure.Persistence.Postgres;
@@ -32,6 +32,41 @@ public sealed class LocationRepo : ILocationRepo
 
         var rows = await conn.QueryAsync<LocationDistrictVm>(
             new CommandDefinition(sql, new { cityId }, tx, cancellationToken: ct));
+        return rows.ToList();
+    }
+
+    public async Task<List<LocationPostalVm>> GetPostalByDistrictAsync(IDbConnection conn, IDbTransaction? tx, int districtId, CancellationToken ct)
+    {
+        const string sql = """
+            SELECT postal_id AS PostalId,
+                   district_id AS DistrictId,
+                   postal_code AS PostalCode,
+                   locality AS Locality
+            FROM location_postal
+            WHERE district_id = @districtId
+            ORDER BY postal_id;
+        """;
+
+        var rows = await conn.QueryAsync<LocationPostalVm>(
+            new CommandDefinition(sql, new { districtId }, tx, cancellationToken: ct));
+        return rows.ToList();
+    }
+
+    public async Task<List<LocationPostalVm>> GetPostalsByDistrictsAsync(IDbConnection conn, IDbTransaction? tx, IEnumerable<int> districtIds, CancellationToken ct)
+    {
+        const string sql = """
+        SELECT postal_id   AS PostalId,
+               district_id AS DistrictId,
+               postal_code AS PostalCode,
+               locality    AS Locality
+        FROM location_postal
+        WHERE district_id = ANY(@districtIds)
+        ORDER BY district_id, postal_id;
+    """;
+
+        var rows = await conn.QueryAsync<LocationPostalVm>(
+            new CommandDefinition(sql, new { districtIds }, tx, cancellationToken: ct));
+
         return rows.ToList();
     }
 }
