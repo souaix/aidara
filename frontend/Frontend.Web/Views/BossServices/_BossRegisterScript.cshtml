@@ -321,23 +321,8 @@
             });
 
             /** ================== 載入城市 / 行政區 ================== */
-                        async function loadCities(intoSelectId) {
-                const sel = document.getElementById(intoSelectId);
-                try {
-                const res = await fetch(`${API_BASE}/api/location/cities`);
-                const cities = await res.json();
-                sel.innerHTML = '<option value="">請選擇縣市</option>';
-                cities.forEach(c => {
-                    const opt = document.createElement("option");
-                    opt.value = c.cityId;
-                    opt.textContent = c.cityName;
-                    sel.appendChild(opt);
-                });
-                } catch (err) {
-                console.error("讀取縣市失敗:", err);
-                }
-            }
-    /** ================== Step 4：多選縣市 / 行政區 / 郵遞區號 ================== */
+
+            /** ================== Step 4：多選縣市 / 行政區 / 郵遞區號 ================== */
 
             // 載入縣市清單（checkbox）
             async function loadCitiesCheckboxes() {
@@ -466,16 +451,74 @@
 
 
                 /** ================== Step 5: 服務據點 ================== */
-                document.getElementById("addrCity")?.addEventListener("change", function () {
-                    loadDistricts(this.value, "addrDistrict", false);
-                    document.getElementById("addrPostal").innerHTML =
-                        '<option value="">請先選擇行政區</option>';
+                async function loadCities(intoSelectId) {
+                const sel = document.getElementById(intoSelectId);
+                try {
+                const res = await fetch(`${API_BASE}/api/location/cities`);
+                const cities = await res.json();
+                sel.innerHTML = '<option value="">請選擇縣市</option>';
+                cities.forEach(c => {
+                    const opt = document.createElement("option");
+                    opt.value = c.cityId;
+                    opt.textContent = c.cityName;
+                    sel.appendChild(opt);
                 });
+                } catch (err) {
+                console.error("讀取縣市失敗:", err);
+                }
+            }
 
-                document.getElementById("addrDistrict")?.addEventListener("change", function () {
-                    loadPostals(this.value, "addrPostal", false);
-                });
+    // Step5 用：載入行政區
+    async function loadDistricts(cityId, intoSelectId, allowMultiple = false) {
+      const sel = document.getElementById(intoSelectId);
+      sel.innerHTML = allowMultiple ? "" : '<option value="">請先選擇縣市</option>';
+      if (!cityId) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/location/districts/${cityId}`);
+        const districts = await res.json();
+        sel.innerHTML = '<option value="">請選擇行政區</option>';
+        districts.forEach(d => {
+          const opt = document.createElement("option");
+          opt.value = d.districtId;
+          opt.textContent = d.districtName;
+          sel.appendChild(opt);
+        });
+      } catch (err) {
+        console.error("讀取行政區失敗:", err);
+      }
+    }
 
+    // Step5 用：載入郵遞區號
+    async function loadPostals(districtId, intoSelectId, allowMultiple = false) {
+      const sel = document.getElementById(intoSelectId);
+      sel.innerHTML = allowMultiple ? "" : '<option value="">請先選擇行政區</option>';
+      if (!districtId) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/location/postal/${districtId}`);
+        if (!res.ok) throw new Error(res.status);
+        const postals = await res.json();
+        sel.innerHTML = '<option value="">請選擇郵遞區號</option>';
+        postals.forEach(p => {
+          const opt = document.createElement("option");
+          opt.value = p.postalCode;
+          opt.textContent = `${p.postalCode} ${p.locality || ""}`;
+          sel.appendChild(opt);
+        });
+      } catch (err) {
+        console.error("讀取郵遞區號失敗:", err);
+      }
+    }
+
+    /** 綁定 Step5 select 事件 */
+    document.getElementById("addrCity")?.addEventListener("change", function () {
+      loadDistricts(this.value, "addrDistrict", false);
+      document.getElementById("addrPostal").innerHTML =
+        '<option value="">請先選擇行政區</option>';
+    });
+
+    document.getElementById("addrDistrict")?.addEventListener("change", function () {
+      loadPostals(this.value, "addrPostal", false);
+    });
 
             /** ================== Modal 開啟 / 導覽 ================== */
             document.addEventListener("click", e => {
