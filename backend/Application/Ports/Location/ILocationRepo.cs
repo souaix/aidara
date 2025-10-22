@@ -9,6 +9,8 @@ public interface ILocationRepo
 {
     Task<List<LocationCityVm>> GetCitiesAsync(IDbConnection conn, IDbTransaction? tx, CancellationToken ct);
     Task<List<LocationDistrictVm>> GetDistrictsByCityAsync(IDbConnection conn, IDbTransaction? tx, int cityId, CancellationToken ct);
+    Task<List<LocationDistrictVm>> GetDistrictsByCitiesAsync(IDbConnection conn, IDbTransaction? tx,IEnumerable<int> cityIds, CancellationToken ct);
+
     Task<List<LocationPostalVm>> GetPostalByDistrictAsync(IDbConnection conn, IDbTransaction? tx, int districtId, CancellationToken ct);
 
     Task<List<LocationPostalVm>> GetPostalsByDistrictsAsync(IDbConnection conn, IDbTransaction? tx, IEnumerable<int> districtIds, CancellationToken ct);

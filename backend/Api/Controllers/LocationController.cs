@@ -35,6 +35,18 @@ namespace Backend.Api.Controllers
             return Ok(districts);
         }
 
+        [HttpPost("districtsbycities")]
+        public async Task<ActionResult<List<LocationDistrictVm>>> GetDistrictsByCities([FromBody] List<int> cityIds, CancellationToken ct)
+        {
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
+            if (cityIds == null || cityIds.Count == 0)
+                return BadRequest("未提供城市 ID");
+
+            var districts = await _repo.GetDistrictsByCitiesAsync(uow.Connection, uow.Transaction, cityIds, ct);
+            return Ok(districts);
+        }
+
+
         /// <summary>
         /// 取得指定行政區底下的所有郵遞區號
         /// </summary>

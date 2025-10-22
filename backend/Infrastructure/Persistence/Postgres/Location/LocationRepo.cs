@@ -35,6 +35,23 @@ public sealed class LocationRepo : ILocationRepo
         return rows.ToList();
     }
 
+    public async Task<List<LocationDistrictVm>> GetDistrictsByCitiesAsync(IDbConnection conn, IDbTransaction? tx,IEnumerable<int> cityIds, CancellationToken ct)
+    {
+        const string sql = """
+        SELECT district_id AS DistrictId,
+               city_id AS CityId,
+               district_name AS DistrictName,
+               code
+        FROM location_district
+        WHERE city_id = ANY(@cityIds)
+        ORDER BY city_id, district_id;
+    """;
+
+        var rows = await conn.QueryAsync<LocationDistrictVm>(
+            new CommandDefinition(sql, new { cityIds }, tx, cancellationToken: ct));
+        return rows.ToList();
+    }
+
     public async Task<List<LocationPostalVm>> GetPostalByDistrictAsync(IDbConnection conn, IDbTransaction? tx, int districtId, CancellationToken ct)
     {
         const string sql = """

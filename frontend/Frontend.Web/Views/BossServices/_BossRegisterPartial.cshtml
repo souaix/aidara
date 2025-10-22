@@ -110,22 +110,28 @@
                 <!-- Step 4：服務範圍 -->
                 <div id="step4" class="step d-none">
                     <h5>Step 4. 選擇服務範圍</h5>
+
+                    <!-- 縣市（多選，最多三個） -->
                     <div class="mb-3">
-                        <select id="citySelect" class="form-select">
-                            <option value="">請選擇縣市</option>
-                        </select>
+                        <label class="form-label fw-bold">選擇縣市（最多三個）</label>
+                        <div id="cityCheckboxes" class="border rounded p-2" style="max-height:180px; overflow:auto;">
+                            <div class="text-muted small">載入中...</div>
+                        </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div id="districtCheckboxes" class="border rounded p-2" style="max-height:250px;overflow:auto;">
-                                <div class="text-muted small">請先選擇縣市</div>
-                            </div>
+                    <!-- 行政區 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">選擇行政區</label>
+                        <div id="districtCheckboxes" class="border rounded p-2" style="max-height:250px; overflow:auto;">
+                            <div class="text-muted small">請先選擇縣市</div>
                         </div>
-                        <div class="col-md-6">
-                            <div id="postalCheckboxes" class="border rounded p-2" style="max-height:250px;overflow:auto;">
-                                <div class="text-muted small">請先選擇行政區</div>
-                            </div>
+                    </div>
+
+                    <!-- 郵遞區號 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">選擇郵遞區號</label>
+                        <div id="postalCheckboxes" class="border rounded p-2" style="max-height:250px; overflow:auto;">
+                            <div class="text-muted small">請先選擇行政區</div>
                         </div>
                     </div>
                 </div>

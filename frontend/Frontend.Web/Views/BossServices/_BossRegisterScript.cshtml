@@ -321,7 +321,7 @@
             });
 
             /** ================== 載入城市 / 行政區 ================== */
-            async function loadCities(intoSelectId) {
+                        async function loadCities(intoSelectId) {
                 const sel = document.getElementById(intoSelectId);
                 try {
                 const res = await fetch(`${API_BASE}/api/location/cities`);
@@ -337,107 +337,132 @@
                 console.error("讀取縣市失敗:", err);
                 }
             }
+    /** ================== Step 4：多選縣市 / 行政區 / 郵遞區號 ================== */
 
-            async function loadDistrictCheckboxes(cityId) {
-                const wrap = document.getElementById("districtCheckboxes");
-                wrap.innerHTML = '<div class="text-muted small">載入中...</div>';
-                document.getElementById("postalCheckboxes").innerHTML =
-                '<div class="text-muted small">請先選擇行政區</div>';
+            // 載入縣市清單（checkbox）
+            async function loadCitiesCheckboxes() {
+              const wrap = document.getElementById("cityCheckboxes");
+              wrap.innerHTML = '<div class="text-muted small">載入中...</div>';
 
-                if (!cityId) {
-                wrap.innerHTML = '<div class="text-muted small">請先選擇縣市</div>';
-                return;
-                }
-
-                try {
-                const res = await fetch(`${API_BASE}/api/location/districts/${cityId}`);
-                const list = await res.json();
+              try {
+                const res = await fetch(`${API_BASE}/api/location/cities`);
+                const cities = await res.json();
                 wrap.innerHTML = "";
-                list.forEach(d => {
-                    const div = document.createElement("div");
-                    div.className = "form-check";
-                    div.innerHTML = `
-                    <input class="form-check-input district-check" type="checkbox" id="d_${d.districtId}" value="${d.districtId}">
-                    <label class="form-check-label" for="d_${d.districtId}">${d.districtName}</label>`;
-                    wrap.appendChild(div);
+
+                cities.forEach(c => {
+                  const div = document.createElement("div");
+                  div.className = "form-check";
+                  div.innerHTML = `
+                    <input class="form-check-input city-check" type="checkbox" id="c_${c.cityId}" value="${c.cityId}">
+                    <label class="form-check-label" for="c_${c.cityId}">${c.cityName}</label>`;
+                  wrap.appendChild(div);
                 });
 
-                // 綁定郵遞區號載入
+                // 綁定事件：多選縣市（最多三個）
+                wrap.querySelectorAll(".city-check").forEach(chk => {
+                  chk.addEventListener("change", () => {
+                    const selected = Array.from(wrap.querySelectorAll(".city-check:checked"))
+                                          .map(x => parseInt(x.value, 10));
+                    if (selected.length > 3) {
+                      chk.checked = false;
+                      alert("最多可選擇三個縣市");
+                      return;
+                    }
+                    loadDistrictCheckboxes(selected);
+                  });
+                });
+              } catch (err) {
+                console.error("讀取縣市失敗:", err);
+                wrap.innerHTML = '<div class="text-danger small">載入失敗</div>';
+              }
+            }
+
+            // 載入多城市的行政區（checkbox）
+            async function loadDistrictCheckboxes(cityIds) {
+              const wrap = document.getElementById("districtCheckboxes");
+              wrap.innerHTML = '<div class="text-muted small">載入中...</div>';
+              document.getElementById("postalCheckboxes").innerHTML =
+                  '<div class="text-muted small">請先選擇行政區</div>';
+
+              try {
+                const res = await fetch(`${API_BASE}/api/location/districtsbycities`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(cityIds)
+                });
+                const list = await res.json();
+                wrap.innerHTML = "";
+
+                list.forEach(d => {
+                  const div = document.createElement("div");
+                  div.className = "form-check";
+                  div.innerHTML = `
+                    <input class="form-check-input district-check" type="checkbox" id="d_${d.districtId}" value="${d.districtId}">
+                    <label class="form-check-label" for="d_${d.districtId}">
+                      ${d.districtName}
+                    </label>`;
+                  wrap.appendChild(div);
+                });
+
+                // 綁事件：行政區多選 → 載入多郵遞區號
                 wrap.querySelectorAll(".district-check").forEach(chk => {
                   chk.addEventListener("change", () => {
                     const checkedIds = Array.from(wrap.querySelectorAll(".district-check:checked"))
                                             .map(x => parseInt(x.value, 10));
-                    if (checkedIds.length === 0) {
-                      document.getElementById("postalCheckboxes").innerHTML =
-                        '<div class="text-muted small">請勾選行政區</div>';
-                      return;
-                    }
-                    // ✅ 多選全部載入
-                    loadPostalCheckboxes(checkedIds);   // 傳「多個」districtId
+                    loadPostalCheckboxes(checkedIds);
                   });
                 });
 
-                } catch (err) {
+              } catch (err) {
                 console.error("讀取行政區失敗:", err);
                 wrap.innerHTML = '<div class="text-danger small">載入失敗</div>';
-                }
+              }
             }
 
-                async function loadPostalCheckboxes(districtIds) {
-                    const wrap = document.getElementById("postalCheckboxes");
-                    wrap.innerHTML = '<div class="text-muted small">載入中...</div>';
-                    if (!districtIds?.length) return;
+            // 載入多行政區的郵遞區號（checkbox）
+            async function loadPostalCheckboxes(districtIds) {
+              const wrap = document.getElementById("postalCheckboxes");
+              wrap.innerHTML = '<div class="text-muted small">載入中...</div>';
+              if (!districtIds?.length) {
+                wrap.innerHTML = '<div class="text-muted small">請選擇行政區</div>';
+                return;
+              }
 
-                    try {
-                        const res = await fetch(`${API_BASE}/api/location/postals`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(districtIds)
-                        });
-                        if (!res.ok) throw new Error(res.status);
-                        const list = await res.json();
-
-                        // 以 district_id 分群顯示
-                        wrap.innerHTML = "";
-                        const grouped = {};
-                        list.forEach(p => {
-                            if (!grouped[p.districtId]) grouped[p.districtId] = [];
-                            grouped[p.districtId].push(p);
-                        });
-
-                        Object.entries(grouped).forEach(([distId, items]) => {
-                            const title = document.createElement("div");
-                            title.className = "fw-bold mt-2";
-                            title.textContent = `行政區 #${distId}`;
-                            wrap.appendChild(title);
-
-                            items.forEach(p => {
-                                const div = document.createElement("div");
-                                div.className = "form-check";
-                                div.innerHTML = `
-                                    <input class="form-check-input postal-check" type="checkbox"
-                                           id="p_${p.postalCode}" value="${p.postalCode}">
-                                    <label class="form-check-label" for="p_${p.postalCode}">
-                                        ${p.postalCode} ${p.locality || ""}
-                                    </label>`;
-                                wrap.appendChild(div);
-                            });
-                        });
-                    } catch (err) {
-                        console.error("讀取郵遞區號失敗:", err);
-                        wrap.innerHTML = '<div class="text-danger small">載入失敗</div>';
-                    }
-                }
-
-                /** 綁定事件 */
-                document.getElementById("citySelect")?.addEventListener("change", function () {
-                  loadDistrictCheckboxes(this.value);
+              try {
+                const res = await fetch(`${API_BASE}/api/location/postals`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(districtIds)
                 });
+                const list = await res.json();
 
-                /** 初始化 */
-                document.addEventListener("DOMContentLoaded", () => {
-                  loadCities("citySelect");
+                // 依 districtId 分群
+                const grouped = {};
+                list.forEach(p => (grouped[p.districtId] ??= []).push(p));
+
+                wrap.innerHTML = "";
+                Object.entries(grouped).forEach(([distId, items]) => {
+                  const title = document.createElement("div");
+                  title.className = "fw-bold mt-2";
+                  title.textContent = `行政區 #${distId}`;
+                  wrap.appendChild(title);
+
+                  items.forEach(p => {
+                    const div = document.createElement("div");
+                    div.className = "form-check";
+                    div.innerHTML = `
+                      <input class="form-check-input postal-check" type="checkbox" id="p_${p.postalCode}" value="${p.postalCode}">
+                      <label class="form-check-label" for="p_${p.postalCode}">
+                        ${p.postalCode} ${p.locality || ""}
+                      </label>`;
+                    wrap.appendChild(div);
+                  });
                 });
+              } catch (err) {
+                console.error("讀取郵遞區號失敗:", err);
+                wrap.innerHTML = '<div class="text-danger small">載入失敗</div>';
+              }
+            }
 
 
                 /** ================== Step 5: 服務據點 ================== */
@@ -451,26 +476,27 @@
                     loadPostals(this.value, "addrPostal", false);
                 });
 
-                /** ================== 初始化 ================== */
-                document.addEventListener("DOMContentLoaded", () => {
-                    // Step 4 的 checkbox 版自己呼叫 loadCities() 了
-                    loadCities("addrCity");  // Step 5
-                });
 
             /** ================== Modal 開啟 / 導覽 ================== */
-        document.addEventListener("click", e => {
-          if (e.target && e.target.id === "openRegisterModal") {
-              selectedMethods.clear();
-              itemPriceRanges.clear();
-              stepHistory = [];
-              pushHistory(STEP.CATEGORY);
-              showStep(STEP.CATEGORY);
-              loadCategories();
-              loadCities("citySelect");
-              loadCities("addrCity");
-              new bootstrap.Modal(document.getElementById("registerModal")).show();
-          }
-        });
+            document.addEventListener("click", e => {
+              if (e.target && e.target.id === "openRegisterModal") {
+                selectedMethods.clear();
+                itemPriceRanges.clear();
+                stepHistory = [];
+
+                pushHistory(STEP.CATEGORY);
+                showStep(STEP.CATEGORY);
+                loadCategories();
+
+                // ✅ Step 4 改成 checkbox 版
+                loadCitiesCheckboxes();
+
+                // ✅ Step 5 保留 select 版
+                loadCities("addrCity");
+
+                new bootstrap.Modal(document.getElementById("registerModal")).show();
+              }
+            });
 
 
 
