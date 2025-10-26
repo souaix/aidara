@@ -30,7 +30,16 @@ public class BossInfoQuestionnaireService
             // 1️⃣ 更新小老闆問卷資訊（完整覆蓋）
             await _bossInfoRepo.ReplaceItemsAsync(uow.Connection, uow.Transaction, dto.UserId, dto.ItemPriceRanges, ct);
             await _bossInfoRepo.ReplaceMethodsAsync(uow.Connection, uow.Transaction, dto.UserId, dto.ServiceMethods, ct);
-            await _bossInfoRepo.ReplaceAreasAsync(uow.Connection, uow.Transaction, dto.UserId, dto.ServiceAreas, ct);
+            try
+            {
+                await _bossInfoRepo.ReplaceAreasAsync(uow.Connection, uow.Transaction, dto.UserId, dto.ServiceAreas, ct);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ReplaceAreasAsync Error] {ex}");
+                throw;
+            }
+
             await _bossInfoRepo.ReplaceAddressesAsync(uow.Connection, uow.Transaction, dto.UserId, dto.ServiceAddresses, ct);
 
             // 2️⃣ 更新使用者角色為 GOLDENBOSS

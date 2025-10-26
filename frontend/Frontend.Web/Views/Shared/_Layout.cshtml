@@ -72,5 +72,39 @@
     } *@
 
 
+    @* 🔽 Razor 先在伺服端產生 JSON (放在 <text> 包起來避免破壞 HTML 結構) *@
+    @{
+        var roleJson = System.Text.Json.JsonSerializer.Serialize(
+        User.Claims
+        .Where(c => c.Type == System.Security.Claims.ClaimTypes.Role)
+        .Select(c => c.Value)
+        .ToList()
+        );
+    }
+
+    <script>
+        (async function() {
+            try {
+                // ✅ Razor 輸出 roles JSON
+                const roles = @Html.Raw(roleJson);
+                console.log("Current RoleIDs:", roles);
+
+                if (!roles.length || roles.includes("CUSTOMER")) {
+                    console.log("🔄 Refreshing claims...");
+                    const resp = await fetch("/Account/RefreshClaims", { credentials: "include" });
+                    if (resp.ok) {
+                        console.log("✅ Claims refreshed, reloading...");
+                        window.location.reload();
+                    } else {
+                        console.warn("⚠️ RefreshClaims failed:", resp.status);
+                    }
+                }
+            } catch (err) {
+                console.error("❌ RefreshClaims error:", err);
+            }
+        })();
+    </script>
+
+
 </body>
 </html>

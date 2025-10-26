@@ -42,21 +42,57 @@ public sealed class BossInfoRepo : IBossInfoRepo
         }
     }
 
-    public async Task ReplaceAreasAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, List<ServiceAreaDto> areas, CancellationToken ct)
+    public async Task ReplaceAreasAsync(
+        IDbConnection conn,
+        IDbTransaction? tx,
+        Guid userId,
+        List<ServiceAreaDto> areas,
+        CancellationToken ct)
     {
+        // 先刪除舊資料
         await conn.ExecuteAsync(
-            new CommandDefinition("DELETE FROM boss_service_area WHERE user_id = @userId", new { userId }, tx, cancellationToken: ct));
+            new CommandDefinition("DELETE FROM boss_service_area WHERE user_id = @userId",
+            new { userId }, tx, cancellationToken: ct));
 
-        foreach (var area in areas)
+        if (areas is null || areas.Count == 0)
+            return;
+
+        // 先查詢該使用者有哪些服務項目 (因為要展開)
+        const string itemSql = "SELECT item_id FROM boss_service_item WHERE user_id = @userId;";
+        var itemIds = (await conn.QueryAsync<string>(
+            new CommandDefinition(itemSql, new { userId }, tx, cancellationToken: ct))).ToList();
+
+        if (itemIds.Count == 0)
+            return; // 沒有服務項目就不展開
+
+        // 寫入多筆
+        const string insertSql = """
+        INSERT INTO boss_service_area
+            (id, user_id, item_id, city_id, district_id, postal_id, created_at)
+        VALUES
+            (gen_random_uuid(), @UserId, @ItemId, @CityId, @DistrictId, @PostalId, now())
+        ON CONFLICT (user_id, item_id, postal_id) DO NOTHING;
+    """;
+
+        // 組合展開資料
+        var expanded = new List<object>();
+        foreach (var itemId in itemIds)
         {
-            const string sql = """
-                INSERT INTO boss_service_area (id, user_id, city_id, district_id, created_at)
-                VALUES (gen_random_uuid(), @userId, @CityId, @DistrictId, now());
-            """;
-
-            await conn.ExecuteAsync(
-                new CommandDefinition(sql, new { userId, area.CityId, area.DistrictId }, tx, cancellationToken: ct));
+            foreach (var area in areas)
+            {
+                expanded.Add(new
+                {
+                    UserId = userId,
+                    ItemId = itemId, // string
+                    CityId = area.CityId,
+                    DistrictId = area.DistrictId,
+                    PostalId = area.PostalId
+                });
+            }
         }
+
+        await conn.ExecuteAsync(
+            new CommandDefinition(insertSql, expanded, tx, cancellationToken: ct));
     }
 
     public async Task ReplaceAddressesAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, List<ServiceAddressDto> addresses, CancellationToken ct)

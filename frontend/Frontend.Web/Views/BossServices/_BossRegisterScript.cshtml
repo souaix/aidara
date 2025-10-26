@@ -173,66 +173,104 @@
                 renderPriceStep();
             });
 
-            /** ================== 完成：組 DTO + AJAX ================== */
-            async function finish() {
-                const userId = document.getElementById("openRegisterModal")?.dataset.userId || "00000000-0000-0000-0000-000000000001";
-                const serviceItemIds = Array.from(selectedItems);
-                const itemPriceRangesArr = serviceItemIds.map(id => {
-                    const r = itemPriceRanges.get(id);
-                    return { itemId: id, minPrice: Number(r?.min ?? 0), maxPrice: Number(r?.max ?? 0) };
-                });
-                const serviceMethods = Array.from(selectedMethods);
-                const serviceAreas = [];
-                const citySel = document.getElementById("citySelect");
-                const districtSel = document.getElementById("districtSelect");
-                if (citySel && citySel.value && districtSel && districtSel.selectedOptions.length > 0) {
-                    Array.from(districtSel.selectedOptions).forEach(opt => {
-                        serviceAreas.push({
-                            cityId: parseInt(citySel.value),
-                            districtId: parseInt(opt.value)
-                        });
-                    });
-                }
-                const serviceAddresses = [];
-                const addrCity = document.getElementById("addrCity")?.value;
-                const addrDistrict = document.getElementById("addrDistrict")?.value;
-                if (addrCity && addrDistrict) {
-                    serviceAddresses.push({
-                        cityId: parseInt(addrCity),
-                        districtId: parseInt(addrDistrict),
-                        street: document.getElementById("addrStreet").value || "",
-                        addressNo: document.getElementById("addrNo").value || ""
-                    });
-                }
+     /** ================== 完成：組 DTO + AJAX ================== */
+    async function finish() {
+      const userId =
+        document.getElementById("openRegisterModal")?.dataset.userId ||
+        "00000000-0000-0000-0000-000000000001";
 
-                const dto = {
-                    userId,
-                    serviceItemIds,
-                    itemPriceRanges: itemPriceRangesArr,
-                    serviceMethods,
-                    serviceAreas,
-                    serviceAddresses
-                };
+      const serviceItemIds = Array.from(selectedItems);
+      const itemPriceRangesArr = serviceItemIds.map(id => {
+        const r = itemPriceRanges.get(id);
+        return {
+          itemId: id,
+          minPrice: Number(r?.min ?? 0),
+          maxPrice: Number(r?.max ?? 0)
+        };
+      });
 
-                try {
-                    const res = await fetch(`${API_BASE}/api/BossInfo/BossInfoQuestionSubmit`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(dto)
-                    });
-                    if (!res.ok) {
-                        const text = await res.text();
-                        throw new Error(`送出失敗 (${res.status}) ${text || ""}`);
-                    }
-                    alert("註冊完成！");
-                    bootstrap.Modal.getInstance(document.getElementById("registerModal"))?.hide();
-                    window.location.href = `/Account/RefreshClaims?returnUrl=${encodeURIComponent('/BossServices/Beaboss')}`;
+      const serviceMethods = Array.from(selectedMethods);
 
-                } catch (err) {
-                    console.error(err);
-                    alert(err.message || "送出失敗，請稍後再試");
-                }
-            }
+      /** Step 4：收集城市、行政區、郵遞區號 */
+      const serviceAreas = [];
+      const cityChecks = document.querySelectorAll("#cityCheckboxes .city-check:checked");
+      const districtChecks = document.querySelectorAll("#districtCheckboxes .district-check:checked");
+      const postalChecks = document.querySelectorAll("#postalCheckboxes .postal-check:checked");
+
+      // ✅ 郵遞區號層級（最細）
+      postalChecks.forEach(p => {
+        const postalId = parseInt(p.value);
+        const districtId = parseInt(p.dataset.districtId || "0");
+        const cityId = parseInt(p.dataset.cityId || "0");
+        serviceAreas.push({ cityId, districtId, postalId });
+      });
+
+      // ✅ 若沒有勾任何郵遞區號，則以行政區為主
+      if (serviceAreas.length === 0 && districtChecks.length > 0) {
+        districtChecks.forEach(d => {
+          const districtId = parseInt(d.value);
+          const cityId = parseInt(d.dataset.cityId || "0");
+          serviceAreas.push({ cityId, districtId, postalId: null });
+        });
+      }
+
+      // ✅ 若連行政區都沒選，只選縣市
+      if (serviceAreas.length === 0 && cityChecks.length > 0) {
+        cityChecks.forEach(c => {
+          const cityId = parseInt(c.value);
+          serviceAreas.push({ cityId, districtId: null, postalId: null });
+        });
+      }
+
+      /** Step 5：服務據點 */
+      const serviceAddresses = [];
+      const addrCity = document.getElementById("addrCity")?.value;
+      const addrDistrict = document.getElementById("addrDistrict")?.value;
+      const addrPostal = document.getElementById("addrPostal")?.value;
+      if (addrCity && addrDistrict) {
+        serviceAddresses.push({
+          cityId: parseInt(addrCity),
+          districtId: parseInt(addrDistrict),
+          postalId: addrPostal ? parseInt(addrPostal) : null,
+          street: document.getElementById("addrStreet").value || "",
+          addressNo: document.getElementById("addrNo").value || ""
+        });
+      }
+
+      /** DTO 組裝 */
+      const dto = {
+        userId,
+        serviceItemIds,
+        itemPriceRanges: itemPriceRangesArr,
+        serviceMethods,
+        serviceAreas,
+        serviceAddresses
+      };
+
+      /** 送出 */
+      try {
+        const res = await fetch(`${API_BASE}/api/BossInfo/BossInfoQuestionSubmit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dto)
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`送出失敗 (${res.status}) ${text || ""}`);
+        }
+
+        alert("註冊完成！");
+        bootstrap.Modal.getInstance(document.getElementById("registerModal"))?.hide();
+        window.location.href = `/Account/RefreshClaims?returnUrl=${encodeURIComponent(
+          "/BossServices/Beaboss"
+        )}`;
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "送出失敗，請稍後再試");
+      }
+    }
+
 
             /** ================== Step1：載入分類 ================== */
             async function loadCategories() {
