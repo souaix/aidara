@@ -14,6 +14,7 @@ namespace Frontend.Web.Controllers;
 public class AccountController : Controller
 {
     private readonly IHttpClientFactory _httpClientFactory;
+
     private static readonly JsonSerializerOptions _jsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -87,6 +88,7 @@ public class AccountController : Controller
         if (result?.User is null) return LocalRedirect("/");
 
 
+    
         // 3) 簽站內 Cookie（用後端回來的 UserDto）
         var user = result.User;  // ✅ 補上這一行
                                  // 新增角色清單（從後端回傳）
@@ -201,4 +203,64 @@ public class AccountController : Controller
         // 4) 導回
         return LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
     }
+
+
+    [Authorize]
+    [HttpPost]
+    public async Task<IActionResult> SwitchMode([FromBody] string roleId, string returnUrl = "/")
+    {
+        Console.WriteLine($"🔁 SwitchMode requested: {roleId}");
+
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdStr, out var userId)) return LocalRedirect("/");
+
+        var client = _httpClientFactory.CreateClient("BackendApi");
+
+        // 1️⃣ 更新後端 ActiveMode
+        using var content = new StringContent(JsonSerializer.Serialize(new { RoleId = roleId }), Encoding.UTF8, "application/json");
+        var resp = await client.PostAsync($"/api/UserRole/switch-active-mode/{userId}", content);
+
+        if (!resp.IsSuccessStatusCode)
+        {
+            Console.WriteLine($"⚠️ SwitchMode failed: {resp.StatusCode}");
+            return LocalRedirect(returnUrl);
+        }
+
+        // 2️⃣ 重新抓最新角色與模式
+        var rolesResp = await client.GetAsync($"/api/UserRole/{userId}");
+        var modeResp = await client.GetAsync($"/api/UserRole/active-mode/{userId}");
+
+        var rolesJson = await rolesResp.Content.ReadAsStringAsync();
+        var modeJson = await modeResp.Content.ReadAsStringAsync();
+
+        using var doc1 = JsonDocument.Parse(rolesJson);
+        using var doc2 = JsonDocument.Parse(modeJson);
+
+        // rolesJson 是一個陣列
+        var roles = doc1.RootElement.EnumerateArray().Select(x => x.GetProperty("RoleId").GetString() ?? "").ToList();
+        var activeMode = doc2.RootElement.GetProperty("roleId").GetString() ?? "CUSTOMER";
+
+        // 3️⃣ 重簽 cookie（帶入最新角色與 active_mode）
+        var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+        new Claim(ClaimTypes.Email, User.FindFirstValue(ClaimTypes.Email) ?? ""),
+        new Claim(ClaimTypes.Name, User.Identity?.Name ?? ""),
+        new Claim("active_mode", activeMode)
+    };
+
+        foreach (var role in roles)
+            claims.Add(new Claim(ClaimTypes.Role, role));
+
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)),
+            new AuthenticationProperties { IsPersistent = true });
+
+        Console.WriteLine($"✅ SwitchMode success: ActiveMode={activeMode}, Roles={string.Join(',', roles)}");
+
+        return LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+    }
+
 }

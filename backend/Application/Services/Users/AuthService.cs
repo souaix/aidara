@@ -14,15 +14,18 @@ public class AuthService
     private readonly IUnitOfWorkFactory _uowFactory;
     private readonly IUserRepo _userRepo;
     private readonly IUserRoleRepo _userRoleRepo;
+    private readonly IUserActiveModeRepo _userActiveModeRepo;
 
     public AuthService(
         IUnitOfWorkFactory uowFactory,
         IUserRepo userRepo,
-        IUserRoleRepo userRoleRepo)
+        IUserRoleRepo userRoleRepo,
+        IUserActiveModeRepo userActiveModeRepo)
     {
         _uowFactory = uowFactory;
         _userRepo = userRepo;
         _userRoleRepo = userRoleRepo;
+        _userActiveModeRepo = userActiveModeRepo;
     }
 
     public async Task<(UserDto User, bool IsNew)> EnsureUserForGoogleAutoAsync(
@@ -40,6 +43,8 @@ public class AuthService
             if (existing is not null)
             {
                 var roles = await _userRoleRepo.GetUserRolesAsync(uow.Connection, uow.Transaction, existing.UserId, ct);
+                var activeMode = await _userActiveModeRepo.GetActiveModeAsync(uow.Connection, uow.Transaction, existing.UserId, ct)
+                ?? "CUSTOMER";
 
                 var dto = new UserDto
                 {

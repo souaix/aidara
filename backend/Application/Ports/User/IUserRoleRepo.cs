@@ -20,4 +20,6 @@ public interface IUserRoleRepo
     /// 移除使用者指定角色
     /// </summary>
     Task RemoveUserRoleAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, string roleId, CancellationToken ct);
+    Task<List<UserRoleWithNameDto>> GetUserRolesWithNameAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, CancellationToken ct);
+
 }

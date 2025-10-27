@@ -83,15 +83,15 @@
     }
 
     <script>
+        const API_BASE = "https://localhost:7030";
         (async function() {
             try {
                 // ✅ Razor 輸出 roles JSON
                 const roles = @Html.Raw(roleJson);
-                console.log("Current RoleIDs:", roles);
-
+                console.log("Current RoleIDs:", roles);                 
                 if (!roles.length || roles.includes("CUSTOMER")) {
                     console.log("🔄 Refreshing claims...");
-                    const resp = await fetch("/Account/RefreshClaims", { credentials: "include" });
+                    const resp = await fetch(`${API_BASE}/api/Account/RefreshClaims`, { credentials: "include" });
                     if (resp.ok) {
                         console.log("✅ Claims refreshed, reloading...");
                         window.location.reload();

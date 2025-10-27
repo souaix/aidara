@@ -49,4 +49,22 @@ public sealed class UserRoleRepo : IUserRoleRepo
         await conn.ExecuteAsync(
             new CommandDefinition(sql, new { userId, roleId }, tx, cancellationToken: ct));
     }
+
+    public async Task<List<UserRoleWithNameDto>> GetUserRolesWithNameAsync(
+        IDbConnection conn, IDbTransaction? tx, Guid userId, CancellationToken ct)
+    {
+        const string sql = @"
+        SELECT a.user_id as UserOd, a.role_id as RoleId, b.role_name as RoleName
+        FROM user_role a
+        LEFT JOIN role_basis b ON a.role_id = b.role_id
+        WHERE a.user_id = @userId
+          AND (a.expiredate IS NULL OR a.expiredate > NOW())
+        ORDER BY b.role_name;
+    ";
+
+        var result = await conn.QueryAsync<UserRoleWithNameDto>(
+            new CommandDefinition(sql, new { userId }, tx, cancellationToken: ct));
+        return result.ToList();
+    }
+
 }

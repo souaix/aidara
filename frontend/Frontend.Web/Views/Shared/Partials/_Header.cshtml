@@ -1,4 +1,8 @@
-﻿<header>
+﻿@using System.Security.Claims
+@{
+    var currentMode = User.FindFirst("active_mode")?.Value ?? "CUSTOMER";
+}
+<header>
     <nav class="navbar navbar-expand-lg bg-white shadow-sm fixed-top">
         <div class="container">
             <a class="navbar-brand fw-bold" href="/">SamaSama</a>
@@ -59,6 +63,13 @@
                         <a class="btn btn-primary" asp-controller="BossServices" asp-action="Beaboss">成為達人</a>
                     </li>
 
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            切換模式
+                        </a>
+                        <ul class="dropdown-menu" id="role-switch-menu"></ul>
+                    </li>
+
 
 
                 </div>
@@ -106,7 +117,39 @@
     </div>
 </div>
 
+<script>
+    const API_BASE = "https://localhost:7030";
+    async function loadAvailableRoles() {
+        const userId = "@User.FindFirstValue(ClaimTypes.NameIdentifier)";
+        
+        const res = await fetch(`${API_BASE}/api/UserRole/get-available-roles/${userId}`);
+        const roles = await res.json();
+        console.log("Available roles:", roles);
+        // roles = [ { userId, roleId, roleName }, ... ]
+        renderSwitchMenu(roles);
+    }
 
 
+    async function renderSwitchMenu(roles) {
+        const menu = document.getElementById("role-switch-menu");
+        menu.innerHTML = roles.map(r =>
+          `<li><a class="dropdown-item" href="#" onclick="switchMode('${r.roleId}')">${r.roleName}</a></li>`
+        ).join('');
+    }
 
-}
+    async function switchMode(roleId) {
+        const resp = await fetch(`${API_BASE}/Account/SwitchMode`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(roleId)
+        });
+        if (resp.ok) {
+            console.log(`✅ 已切換為 ${roleId}`);
+            location.reload();
+        } else {
+            alert("切換失敗");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadAvailableRoles);
+</script>
