@@ -19,8 +19,4 @@
     <ProjectReference Include="..\Domain\Backend.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Persistence\Mock\Users\" />
-  </ItemGroup>
-
 </Project>

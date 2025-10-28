@@ -9,7 +9,6 @@ using Infrastructure.Persistence.Shared;   // 放 PostgreSqlUnitOfWorkFactory
 using Npgsql;
 using System.Reflection;
 using System.Text.Json.Serialization;
-
 #if DEBUG
 Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
 #else
@@ -26,52 +25,72 @@ builder.Configuration
 // ========= Connection =========
 var connString = builder.Configuration.GetConnectionString("Postgres");
 
-// PostgreSQL UnitOfWork Factory（跨資料庫統一介面）
+// ========= UnitOfWork 設定 =========
+#if DEBUG
+Console.WriteLine("👉 DEBUG 模式：使用 FakeUnitOfWorkFactory");
+builder.Services.AddScoped<IUnitOfWorkFactory, Backend.Infrastructure.Persistence.Mock.FakeUnitOfWorkFactory>();
+#else
 builder.Services.AddSingleton<IUnitOfWorkFactory>(
-	_ => new PostgreSqlUnitOfWorkFactory(connString));
+    _ => new Infrastructure.Persistence.Shared.PostgreSqlUnitOfWorkFactory(connString));
+#endif
 
-// 若仍需要 DataSource 供 Dapper / Repo 使用，可保留
+// ========= DataSource (供 Dapper 用) =========
 builder.Services.AddSingleton(new NpgsqlDataSourceBuilder(connString).Build());
 
 // ========= Scrutor 掃描 =========
 var appAsm = Assembly.Load("Backend.Application");
 var infraAsm = Assembly.Load("Backend.Infrastructure");
 
-
-
-// ===== Repository 掃描 =====
+// ========= Repository 掃描 =========
 #if DEBUG
+Console.WriteLine("👉 DEBUG 模式：優先使用 Mock Repository，找不到再退回真實版本");
+
 bool IsRepoClass(Type t) =>
 	t.IsClass && !t.IsAbstract &&
 	(t.Name.EndsWith("Repo", StringComparison.Ordinal) ||
 	 t.Name.EndsWith("Repository", StringComparison.Ordinal));
 
 bool IsMockNs(string? ns) =>
-	ns is not null &&
-	(ns.Contains(".Mock.", StringComparison.Ordinal) || ns.EndsWith(".Mock", StringComparison.Ordinal));
+	ns is not null && ns.Contains(".Mock", StringComparison.Ordinal);
 
-var mockRepoTypes = infraAsm.GetTypes().Where(t => IsRepoClass(t) && IsMockNs(t.Namespace));
+// 找出所有 Mock Repo
+var mockRepoTypes = infraAsm.GetTypes().Where(t => IsRepoClass(t) && IsMockNs(t.Namespace)).ToList();
 var mockInterfaceSet = new HashSet<Type>(mockRepoTypes.SelectMany(t => t.GetInterfaces()));
 
-builder.Services.Scan(scan => scan
-    .FromAssemblies(infraAsm)
-    .AddClasses(c => c.Where(t =>
-        IsRepoClass(t) &&
-        t.Namespace != null &&
-        t.Namespace.StartsWith("Backend.Infrastructure.Persistence.", StringComparison.Ordinal) &&
-        !IsMockNs(t.Namespace) &&
-        !t.GetInterfaces().Any(i => mockInterfaceSet != null && mockInterfaceSet.Contains(i))
-    ))
-    .AsImplementedInterfaces()
-    .WithScopedLifetime());
-
-
+// 1️⃣ 先註冊所有真實 Repo（不管有沒有 Mock）
 builder.Services.Scan(scan => scan
 	.FromAssemblies(infraAsm)
-	.AddClasses(c => c.Where(t => IsRepoClass(t) && IsMockNs(t.Namespace)))
+	.AddClasses(c => c.Where(t =>
+		IsRepoClass(t) &&
+		t.Namespace != null &&
+		t.Namespace.StartsWith("Backend.Infrastructure.Persistence.", StringComparison.Ordinal) &&
+		!IsMockNs(t.Namespace)))
 	.AsImplementedInterfaces()
 	.WithScopedLifetime());
+
+// 2️⃣ 再註冊 Mock Repo（只會覆蓋存在的介面）
+if (mockRepoTypes.Count > 0)
+{
+	Console.WriteLine($"👉 偵測到 {mockRepoTypes.Count} 個 Mock Repositories，已覆蓋對應介面：");
+	foreach (var t in mockRepoTypes)
+	{
+		Console.WriteLine($"   - {t.FullName}");
+	}
+
+	builder.Services.Scan(scan => scan
+		.FromAssemblies(infraAsm)
+		.AddClasses(c => c.Where(t => IsRepoClass(t) && IsMockNs(t.Namespace)))
+		.AsImplementedInterfaces()
+		.WithScopedLifetime());
+}
+else
+{
+	Console.WriteLine("⚠️ 未偵測到任何 Mock Repository，將使用真實 Repo。");
+}
+
 #else
+Console.WriteLine("👉 RELEASE 模式：使用真實資料庫 Repositories");
+
 builder.Services.Scan(scan => scan
     .FromAssemblies(infraAsm)
     .AddClasses(c => c.Where(t =>

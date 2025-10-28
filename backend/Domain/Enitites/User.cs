@@ -14,4 +14,9 @@ public class User
     public DateTime? LastSeenAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+	//public static implicit operator User(User v)
+	//{
+	//	throw new NotImplementedException();
+	//}
 }
