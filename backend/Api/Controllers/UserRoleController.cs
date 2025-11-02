@@ -28,20 +28,20 @@ namespace Backend.Api.Controllers
         }
 
         /// <summary>
-        /// 取得指定使用者的所有角色
+        /// 取得指定使用者的所有角色（僅 roleId）
         /// </summary>
-        [HttpGet("{userId:guid}")]
+        [HttpGet("user/{userId:guid}/roles")]
         public async Task<ActionResult<List<UserRoleDto>>> GetUserRoles(Guid userId, CancellationToken ct)
         {
             await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
             var roles = await _userRoleRepo.GetUserRolesAsync(uow.Connection, uow.Transaction, userId, ct);
-            return Ok(roles);
+            return Ok(roles ?? new List<UserRoleDto>());
         }
 
         /// <summary>
         /// 新增或更新使用者角色（有則更新，無則新增）
         /// </summary>
-        [HttpPost("{userId:guid}")]
+        [HttpPost("{userId:guid}/roles")]
         public async Task<IActionResult> AddUserRole(Guid userId, [FromBody] AddUserRoleRequest req, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(req.RoleId))
@@ -64,7 +64,7 @@ namespace Backend.Api.Controllers
         /// <summary>
         /// 移除使用者的特定角色
         /// </summary>
-        [HttpDelete("{userId:guid}/{roleId}")]
+        [HttpDelete("{userId:guid}/roles/{roleId}")]
         public async Task<IActionResult> RemoveUserRole(Guid userId, string roleId, CancellationToken ct)
         {
             await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
@@ -89,30 +89,42 @@ namespace Backend.Api.Controllers
         {
             await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
             var roles = await _roleBasisRepo.GetAllRolesAsync(uow.Connection, uow.Transaction, ct);
-            return Ok(roles);
+            return Ok(roles ?? new List<RoleBasisDto>());
         }
 
-        /// <summary>取得指定使用者目前的操作模式</summary>
-        [HttpGet("get-active-mode/{userId:guid}")]
-        public async Task<IActionResult> GetActiveMode(Guid userId, CancellationToken ct)
+        /// <summary>
+        /// 取得使用者可用角色清單（含中文名稱）
+        /// </summary>
+        [HttpGet("user/{userId:guid}/available-roles")]
+        public async Task<ActionResult<List<UserRoleWithNameDto>>> GetAvailableRoles(Guid userId, CancellationToken ct)
+        {
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
+            var roles = await _userRoleRepo.GetUserRolesWithNameAsync(uow.Connection, uow.Transaction, userId, ct);
+            return Ok(roles ?? new List<UserRoleWithNameDto>());
+        }
+
+        /// <summary>
+        /// 取得指定使用者目前的操作模式
+        /// </summary>
+        [HttpGet("user/{userId:guid}/active-mode")]
+        public async Task<ActionResult<ActiveModeDto>> GetActiveMode(Guid userId, CancellationToken ct)
         {
             await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
             var mode = await _modeRepo.GetActiveModeAsync(uow.Connection, uow.Transaction, userId, ct)
                         ?? "CUSTOMER";
-            return Ok(new { roleId = mode });
+            return Ok(new ActiveModeDto { RoleId = mode });
         }
 
-        public sealed class SwitchModeRequest
+        /// <summary>
+        /// 設定指定使用者的操作模式
+        /// </summary>
+        [HttpPost("user/{userId:guid}/switch-active-mode")]
+        public async Task<IActionResult> SetActiveMode(Guid userId, [FromBody] ActiveModeDto req, CancellationToken ct)
         {
-            public string RoleId { get; set; } = "CUSTOMER";
-        }
+            if (string.IsNullOrWhiteSpace(req.RoleId))
+                return BadRequest("RoleId 不可為空");
 
-        /// <summary>設定指定使用者的操作模式</summary>
-        [HttpPost("switch-active-mode/{userId:guid}")]
-        public async Task<IActionResult> SwitchActiveMode(Guid userId, [FromBody] SwitchModeRequest req, CancellationToken ct)
-        {
             await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
-
             try
             {
                 await _modeRepo.SetActiveModeAsync(uow.Connection, uow.Transaction, userId, req.RoleId, ct);
@@ -125,18 +137,6 @@ namespace Backend.Api.Controllers
                 throw;
             }
         }
-
-        /// <summary>
-        /// 取得使用者可用角色清單（含中文名稱）
-        /// </summary>
-        [HttpGet("get-available-roles/{userId:guid}")]
-        public async Task<ActionResult<List<UserRoleWithNameDto>>> GetAvailableRoles(Guid userId, CancellationToken ct)
-        {
-            await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
-            var roles = await _userRoleRepo.GetUserRolesWithNameAsync(uow.Connection, uow.Transaction, userId, ct);
-            return Ok(roles);
-        }
-
     }
 
     /// <summary>
@@ -144,12 +144,15 @@ namespace Backend.Api.Controllers
     /// </summary>
     public class AddUserRoleRequest
     {
-        /// <summary>角色代碼（如 ADMIN、BOSS、CUSTOMER）</summary>
         public string RoleId { get; set; } = string.Empty;
-
-        /// <summary>角色到期日（可為 null 表示永久有效）</summary>
         public DateTime? ExpireDate { get; set; }
     }
 
-
+    /// <summary>
+    /// 用於取得／設定使用者目前模式
+    /// </summary>
+    public class ActiveModeDto
+    {
+        public string RoleId { get; set; } = "CUSTOMER";
+    }
 }
