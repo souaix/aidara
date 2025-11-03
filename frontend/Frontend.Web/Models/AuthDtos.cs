@@ -10,6 +10,7 @@ public class UserDto
     public string Email { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string AvatarUrl { get; set; } = string.Empty;
+    public string ActiveMode { get; init; } = "CUSTOMER";
 
     // ✅ 新增
     public List<string> Roles { get; set; } = new();

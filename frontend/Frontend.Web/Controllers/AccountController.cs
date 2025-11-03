@@ -9,6 +9,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 
+
 namespace Frontend.Web.Controllers
 {
     public class AccountController : Controller
@@ -81,7 +82,8 @@ namespace Frontend.Web.Controllers
                 new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.DisplayName ?? user.Email),
-                new Claim("active_mode", roles.FirstOrDefault() ?? "CUSTOMER")
+                new System.Security.Claims.Claim("active_mode", user.ActiveMode ?? roles.FirstOrDefault() ?? "CUSTOMER")
+
             };
 
             if (!string.IsNullOrEmpty(user.AvatarUrl))

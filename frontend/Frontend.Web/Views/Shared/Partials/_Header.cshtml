@@ -1,7 +1,7 @@
 ﻿@using System.Security.Claims
-@{
-    var currentMode = User.FindFirst("active_mode")?.Value ?? "CUSTOMER";
-}
+@* @{
+    var currentMode = User.FindFirst("active_mode")?.Value ?? "CUSTOMER3";
+} *@
 
 <header>
     <nav class="navbar navbar-expand-lg bg-white shadow-sm fixed-top">
@@ -50,7 +50,7 @@
                     <!-- 🔽 模式切換下拉 -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            模式：<span id="current-mode-label">@currentMode</span>
+                            模式：<span id="current-mode-label"></span>
                         </a>
                         <ul class="dropdown-menu" id="role-switch-menu">
                             <li><span class="dropdown-item text-muted">載入中...</span></li>
@@ -99,6 +99,7 @@
 
 <script>
     const API_BASE = "https://localhost:7030"; // ← 你的 Backend.Api Base URL
+    let pendingRoleName = null;// 🌟 暫存即將切換的角色名稱
 
     async function getActiveMode(userId) {
       try {
@@ -152,6 +153,12 @@
         `<li><a class="dropdown-item" href="#" onclick="switchMode('${r.roleId}','${r.roleName}')">${r.roleName}</a></li>`
       ).join('');
 
+    // 🌟 優先顯示 pendingRoleName（防止閃回 CUSTOMER）
+    const showName = pendingRoleName
+      ?? (roles.find(r => r.roleId === activeCode)?.roleName ?? "顧客");
+
+    currentModeEl.textContent = showName;
+
       // 設定目前中文模式
       const activeRole = roles.find(r => r.roleId === activeCode);
       currentModeEl.textContent = activeRole ? activeRole.roleName : "顧客";
@@ -163,6 +170,10 @@
 
       console.log("🌀 切換模式中 →", roleId);
 
+    // 🌟 立即更新暫存名稱避免閃爍
+    pendingRoleName = roleName;
+    document.getElementById("current-mode-label").textContent = roleName;
+
       // ✅ 呼叫 switch-active-mode
       const resp = await fetch(`${API_BASE}/api/UserRole/user/${userId}/switch-active-mode`, {
         method: "POST",
@@ -173,6 +184,7 @@
       if (!resp.ok) {
         alert("切換失敗");
         console.warn("⚠️ switch-active-mode failed", resp.status);
+        pendingRoleName = null;
         return;
       }
 

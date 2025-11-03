@@ -53,7 +53,8 @@ public class AuthService
                     DisplayName = existing.DisplayName,
                     AvatarUrl = existing.AvatarUrl,
                     Roles = roles.Select(r => r.RoleId).ToList(),
-                    BossName = existing.BossName
+                    BossName = existing.BossName,
+                    ActiveMode = activeMode
                 };
 
                 await _userRepo.TouchLastSeenAsync(uow.Connection, uow.Transaction, existing.UserId, ct);
@@ -86,7 +87,8 @@ public class AuthService
                 DisplayName = created.DisplayName,
                 AvatarUrl = created.AvatarUrl,
                 Roles = new List<string> { "CUSTOMER" },
-                BossName = created.DisplayName
+                BossName = created.DisplayName,
+                ActiveMode = "CUSTOMER"
             };
 
             await uow.CommitAsync(ct);
