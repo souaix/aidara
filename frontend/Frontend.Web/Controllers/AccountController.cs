@@ -164,6 +164,7 @@ namespace Frontend.Web.Controllers
                 .ToList();
 
             var activeMode = doc2.RootElement.GetProperty("roleId").GetString() ?? "CUSTOMER";
+            Console.WriteLine("AM:" + activeMode);
 
             // 3️⃣ 重簽 cookie
             var claims = new List<Claim>
