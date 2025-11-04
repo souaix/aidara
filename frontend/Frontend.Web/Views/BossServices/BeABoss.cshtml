@@ -13,7 +13,7 @@
     Layout = "_Layout";
 
     // 讀目前模式（由 /Account/SwitchMode 重簽 cookie 時更新）
-    var activeMode = User.FindFirst("active_mode")?.Value ?? "CUSTOMER";
+    var activeMode = User.FindFirst("active_mode")?.Value ?? "CUSTOMER33";
 
     // 只要目前模式含 BOSS 就顯示小老闆畫面
     bool isBoss = activeMode.Contains("BOSS", StringComparison.OrdinalIgnoreCase);

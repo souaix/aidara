@@ -12,6 +12,7 @@ using System.Text.Json;
 
 namespace Frontend.Web.Controllers
 {
+    [Route("[controller]/[action]")]
     public class AccountController : Controller
     {
         private readonly IHttpClientFactory _httpClientFactory;
@@ -151,7 +152,7 @@ namespace Frontend.Web.Controllers
 
             // 2️⃣ 拿最新角色 + 模式
             var rolesResp = await client.GetAsync($"/api/UserRole/user/{userId}/available-roles");
-            var modeResp = await client.GetAsync($"/api/UserRole/user/{userId}/get-active-mode");
+            var modeResp = await client.GetAsync($"/api/UserRole/user/{userId}/active-mode");
 
             var rolesJson = await rolesResp.Content.ReadAsStringAsync();
             var modeJson = await modeResp.Content.ReadAsStringAsync();
@@ -189,5 +190,77 @@ namespace Frontend.Web.Controllers
             // B方案：回傳 JSON，前端 redirect 到同頁
             return Ok(new { success = true, activeMode = activeMode });
         }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> RefreshClaims()
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized("Invalid userId in claims");
+
+            var client = _httpClientFactory.CreateClient("BackendApi");
+
+            // 從 Backend 取角色 + 模式
+            var rolesResp = await client.GetAsync($"/api/UserRole/user/{userId}/available-roles");
+            var modeResp = await client.GetAsync($"/api/UserRole/user/{userId}/active-mode");
+
+            if (!rolesResp.IsSuccessStatusCode || !modeResp.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"❌ Backend failed: roles={rolesResp.StatusCode}, mode={modeResp.StatusCode}");
+                return StatusCode(500, "Fetch roles/active-mode failed");
+            }
+
+            var rolesJson = await rolesResp.Content.ReadAsStringAsync();
+            var modeJson = await modeResp.Content.ReadAsStringAsync();
+
+            using var docRoles = JsonDocument.Parse(rolesJson);
+            using var docMode = JsonDocument.Parse(modeJson);
+
+            var roles = docRoles.RootElement.EnumerateArray()
+                .Select(x =>
+                    x.TryGetProperty("RoleId", out var r1) ? r1.GetString() :
+                    x.TryGetProperty("roleId", out var r2) ? r2.GetString() :
+                    null)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var activeMode = docMode.RootElement.TryGetProperty("roleId", out var rActive)
+                ? rActive.GetString() ?? "CUSTOMER"
+                : "CUSTOMER";
+
+            Console.WriteLine($"✅ Refreshed ActiveMode: {activeMode}");
+
+            var email = User.FindFirstValue(ClaimTypes.Email) ?? "";
+            var name = User.FindFirstValue(ClaimTypes.Name) ?? email;
+            var avatar = User.FindFirst("avatar_url")?.Value ?? "";
+
+            var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+        new Claim(ClaimTypes.Email, email),
+        new Claim(ClaimTypes.Name, name),
+        new Claim("active_mode", activeMode)
+    };
+            if (!string.IsNullOrWhiteSpace(avatar))
+                claims.Add(new Claim("avatar_url", avatar));
+            foreach (var r in roles)
+                claims.Add(new Claim(ClaimTypes.Role, r));
+
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+            HttpContext.User = principal;
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal,
+                new AuthenticationProperties { IsPersistent = true });
+
+            return Ok(new { activeMode, roles });
+        }
+
+
     }
 }
