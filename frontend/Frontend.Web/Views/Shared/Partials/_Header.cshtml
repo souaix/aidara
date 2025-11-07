@@ -1,7 +1,8 @@
 ﻿@using System.Security.Claims
-@{
-    var currentMode = User.FindFirst("active_mode")?.Value ?? "CUSTOMER";
-}
+@* @{
+    var currentMode = User.FindFirst("active_mode")?.Value ?? "CUSTOMER3";
+} *@
+
 <header>
     <nav class="navbar navbar-expand-lg bg-white shadow-sm fixed-top">
         <div class="container">
@@ -15,34 +16,15 @@
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">首頁</a></li>
                     <li class="nav-item"><a class="nav-link" asp-controller="Map" asp-action="Index">地圖找案件</a></li>
-                    <li class="nav-item">
-                        <a class="nav-link" asp-controller="Stripe" asp-action="Test" target="_blank">
-                            Stripe 測試
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" asp-controller="CustomerServices" asp-action="BossMode">
-                            小老闆模式
-                        </a>
-                    </li>
-
-
+                    <li class="nav-item"><a class="nav-link" asp-controller="Stripe" asp-action="Test" target="_blank">Stripe 測試</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-controller="CustomerServices" asp-action="BossMode">小老闆模式</a></li>
                 </ul>
-                <div class="d-flex gap-2">
 
-                    <!-- 已登入：顯示錢包餘額 + DisplayName + 登出 -->
+                <div class="d-flex gap-2">
                     @if (User.Identity?.IsAuthenticated ?? false)
                     {
-                        <input type="hidden" id="currentUserId"
-                               value="@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value" />
-                        <div id="wallet-badges" class="d-flex gap-2 me-2">
-                            <span class="badge bg-warning text-dark">Gold: @ViewBag.GoldBalance</span>
-                            <span class="badge bg-secondary">Silver: @ViewBag.SilverBalance</span>
-                        </div>
-                        <span class="navbar-text me-2">
-                            @User.Identity.Name
-                        </span>
+                        <input type="hidden" id="currentUserId" value="@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value" />
+                        <span class="navbar-text me-2">@User.Identity.Name</span>
 
                         <li class="nav-item">
                             <a class="btn btn-outline-primary ms-2"
@@ -51,29 +33,30 @@
                                 徵求服務
                             </a>
                         </li>
-                        <a class="btn btn-outline-secondary" asp-controller="Account" asp-action="Logout" asp-route-returnUrl="@Context.Request.Path">登出</a>
+                        <a class="btn btn-outline-secondary"
+                           asp-controller="Account"
+                           asp-action="Logout"
+                           asp-route-returnUrl="@Context.Request.Path">登出</a>
                     }
                     else
                     {
                         <a class="btn btn-outline-secondary" asp-controller="Account" asp-action="Login">登入</a>
                     }
 
-
                     <li class="nav-item">
                         <a class="btn btn-primary" asp-controller="BossServices" asp-action="Beaboss">成為達人</a>
                     </li>
 
+                    <!-- 🔽 模式切換下拉 -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            切換模式
+                            模式：<span id="current-mode-label"></span>
                         </a>
-                        <ul class="dropdown-menu" id="role-switch-menu"></ul>
+                        <ul class="dropdown-menu" id="role-switch-menu">
+                            <li><span class="dropdown-item text-muted">載入中...</span></li>
+                        </ul>
                     </li>
-
-
-
                 </div>
-
             </div>
         </div>
     </nav>
@@ -90,11 +73,9 @@
 
             <div class="modal-body">
                 <p class="text-muted small mb-3">選擇你要使用的方式：</p>
-                @* 放在你的登入 Modal 裡 *@
                 <div class="d-grid gap-2">
                     <button type="button" class="gsi-btn"
-                            onclick="location.href='@Url.Action("Google", "Account", new { mode = "login", returnUrl = Context.Request.Path })'"
-                            aria-label="使用 Google 帳戶登入">
+                            onclick="location.href='@Url.Action("Google", "Account", new { mode = "login", returnUrl = Context.Request.Path })'">
                         <span class="gsi-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48">
                                 <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 31.9 29.2 35 24 35c-6.1 0-11-4.9-11-11s4.9-11 11-11c2.8 0 5.4 1.1 7.4 2.8l5.7-5.7C33.6 7 29 5 24 5 13 5 4 14 4 25s9 20 20 20c10.5 0 19.3-7.6 19.3-20 0-1.3-.1-2.2-.3-3.5z" />
@@ -106,7 +87,6 @@
                         <span class="gsi-text">使用 Google 帳戶登入</span>
                     </button>
                 </div>
-
             </div>
 
             <div class="modal-footer justify-content-between">
@@ -118,38 +98,135 @@
 </div>
 
 <script>
-    const API_BASE = "https://localhost:7030";
-    async function loadAvailableRoles() {
-        const userId = "@User.FindFirstValue(ClaimTypes.NameIdentifier)";
-        
-        const res = await fetch(`${API_BASE}/api/UserRole/get-available-roles/${userId}`);
-        const roles = await res.json();
-        console.log("Available roles:", roles);
-        // roles = [ { userId, roleId, roleName }, ... ]
-        renderSwitchMenu(roles);
-    }
+    
+    let pendingRoleName = null;// 🌟 暫存即將切換的角色名稱
 
-
-    async function renderSwitchMenu(roles) {
-        const menu = document.getElementById("role-switch-menu");
-        menu.innerHTML = roles.map(r =>
-          `<li><a class="dropdown-item" href="#" onclick="switchMode('${r.roleId}')">${r.roleName}</a></li>`
-        ).join('');
-    }
-
-    async function switchMode(roleId) {
-        const resp = await fetch(`${API_BASE}/Account/SwitchMode`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(roleId)
-        });
-        if (resp.ok) {
-            console.log(`✅ 已切換為 ${roleId}`);
-            location.reload();
-        } else {
-            alert("切換失敗");
+    async function getActiveMode(userId) {
+      try {
+        const res = await fetch(`${API_BASE}/api/UserRole/user/${userId}/active-mode`);
+        if (!res.ok) {
+          console.warn("⚠️ 無法取得 active-mode", res.status);
+          return "CUSTOMER";
         }
+        const json = await res.json();
+        return json.roleId || "CUSTOMER";
+      } catch (err) {
+        console.error("🚨 讀取 active-mode 發生錯誤:", err);
+        return "CUSTOMER";
+      }
+    }
+
+    async function loadAvailableRoles() {
+      const userId = "@User.FindFirstValue(ClaimTypes.NameIdentifier)";
+      if (!userId) return;
+
+      try {
+        // ① 載入角色清單
+        const rolesRes = await fetch(`${API_BASE}/api/UserRole/user/${userId}/available-roles`);
+        if (!rolesRes.ok) {
+          console.warn("⚠️ 取得可用角色失敗", rolesRes.status);
+          return;
+        }
+        const roles = await rolesRes.json();
+
+        // ② 取得當前 active-mode
+        const activeCode = await getActiveMode(userId);
+
+        // ③ Render 下拉與目前中文名稱
+        renderSwitchMenu(roles, activeCode);
+      } catch (err) {
+        console.error("🚨 無法載入角色清單:", err);
+      }
+    }
+
+    function renderSwitchMenu(roles, activeCode) {
+      const menu = document.getElementById("role-switch-menu");
+      const currentModeEl = document.getElementById("current-mode-label");
+
+      if (!roles || !roles.length) {
+        menu.innerHTML = `<li><span class="dropdown-item text-muted">無可用角色</span></li>`;
+        currentModeEl.textContent = "顧客";
+        return;
+      }
+
+      menu.innerHTML = roles.map(r =>
+        `<li><a class="dropdown-item" href="#" onclick="switchMode('${r.roleId}','${r.roleName}')">${r.roleName}</a></li>`
+      ).join('');
+
+    // 🌟 優先顯示 pendingRoleName（防止閃回 CUSTOMER）
+    const showName = pendingRoleName
+      ?? (roles.find(r => r.roleId === activeCode)?.roleName ?? "顧客");
+
+    currentModeEl.textContent = showName;
+
+      // 設定目前中文模式
+      const activeRole = roles.find(r => r.roleId === activeCode);
+      currentModeEl.textContent = activeRole ? activeRole.roleName : "顧客";
+    }
+
+    async function switchMode(roleId, roleName) {
+      const userId = "@User.FindFirstValue(ClaimTypes.NameIdentifier)";
+      if (!userId) return;
+
+      console.log("🌀 切換模式中 →", roleId);
+
+    // 🌟 立即更新暫存名稱避免閃爍
+    pendingRoleName = roleName;
+    document.getElementById("current-mode-label").textContent = roleName;
+
+      // ✅ 呼叫 switch-active-mode
+      const resp = await fetch(`${API_BASE}/api/UserRole/user/${userId}/switch-active-mode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleId })
+      });
+
+      if (!resp.ok) {
+        alert("切換失敗");
+        console.warn("⚠️ switch-active-mode failed", resp.status);
+        pendingRoleName = null;
+        return;
+      }
+
+      // ✅ 立即顯示新中文名稱
+      document.getElementById("current-mode-label").textContent = roleName;
+
+      // ✅ 再次呼叫 active-mode 以確認更新成功
+      const active = await getActiveMode(userId);
+      console.log("🧭 ActiveMode after switch:", active);
+
+      // ✅ 平滑 redirect（方案B）
+      document.body.classList.add("fade-out");
+      setTimeout(() => window.location.href = window.location.pathname, 400);
     }
 
     document.addEventListener("DOMContentLoaded", loadAvailableRoles);
 </script>
+
+<style>
+    body.fade-out {
+        opacity: 0.4;
+        transition: opacity 0.3s ease;
+    }
+</style>
+
+<style>
+    body.fade-out {
+        opacity: 0.4;
+        transition: opacity 0.3s ease;
+    }
+</style>
+
+<style>
+    body.fade-out {
+        opacity: 0.4;
+        transition: opacity 0.3s ease;
+    }
+</style>
+
+<style>
+    body.fade-out {
+        opacity: 0.4;
+        transition: opacity 0.3s ease;
+    }
+</style>

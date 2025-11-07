@@ -1,266 +1,266 @@
-﻿using Frontend.Web.Models;
+﻿// Frontend.Web/Controllers/AccountController.cs
+using Frontend.Web.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Data;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 
-namespace Frontend.Web.Controllers;
 
-public class AccountController : Controller
+namespace Frontend.Web.Controllers
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    private static readonly JsonSerializerOptions _jsonOpts = new()
+    [Route("[controller]/[action]")]
+    public class AccountController : Controller
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
-    };
-
-    public AccountController(IHttpClientFactory httpClientFactory)
-    => _httpClientFactory = httpClientFactory;
-
-    // 1) 入口：導去 Google
-    [HttpGet]
-    public IActionResult Google(string mode = "login", string returnUrl = "/")
-    {
-        // 把 mode/returnUrl 夾帶到回調
-        var redirectUrl = Url.Action(nameof(GoogleCallback), "Account", new { mode, returnUrl });
-        var props = new AuthenticationProperties { RedirectUri = redirectUrl };
-        return Challenge(props, GoogleDefaults.AuthenticationScheme);
-    }
-
-    // 2) Google 回調
-    [HttpGet]
-    public async Task<IActionResult> GoogleCallback(string mode = "login", string returnUrl = "/")
-    {
-		await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
-
-		// 1) 從 Google Claims 取資料
-		var email = User.FindFirstValue(ClaimTypes.Email);
-        var name = User.Identity?.Name ?? email ?? "User";
-        var avatar = User.Claims.FirstOrDefault(c => c.Type == "urn:google:picture")?.Value
-                  ?? User.Claims.FirstOrDefault(c => c.Type == "picture")?.Value;
-
-        if (string.IsNullOrWhiteSpace(email))
-            return LocalRedirect("/");
-
-        // 2) 呼叫 Backend.Api 確認/建立使用者
-        var client = _httpClientFactory.CreateClient("BackendApi");
-        var payload = new GoogleEnsurePayload(
-            Email: email,
-            DisplayName: name,
-            AvatarUrl: avatar,
-            Mode: mode.Equals("register", StringComparison.OrdinalIgnoreCase) ? AuthMode.Register : AuthMode.Login
-        );
-
-        using var content = new StringContent(JsonSerializer.Serialize(payload, _jsonOpts), Encoding.UTF8, "application/json");
-        var resp = await client.PostAsync("/api/auth/google/auto", content);
-      
-        if (!resp.IsSuccessStatusCode)
+        private readonly IHttpClientFactory _httpClientFactory;
+        private static readonly JsonSerializerOptions _jsonOpts = new()
         {
-            var body = await resp.Content.ReadAsStringAsync();
-            // 先暫時用 200 顯示錯誤內容
-            return Content($"Backend 400/500：{resp.StatusCode}\n{body}", "text/plain", Encoding.UTF8);
-        }
-
-
-        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            // login 模式但後端查無帳號（且不自動註冊）
-            return LocalRedirect("/");
-        }
-
-        resp.EnsureSuccessStatusCode();
-        var json = await resp.Content.ReadAsStringAsync();
-        // 🧩 先印出看看後端實際回傳的 JSON
-        Console.WriteLine("==== Backend JSON Response ====");
-        Console.WriteLine(json);
-        Console.WriteLine("===============================");
-        var result = JsonSerializer.Deserialize<EnsureUserResponse>(json, _jsonOpts);
-        
-
-        if (result?.User is null) return LocalRedirect("/");
-
-
-    
-        // 3) 簽站內 Cookie（用後端回來的 UserDto）
-        var user = result.User;  // ✅ 補上這一行
-                                 // 新增角色清單（從後端回傳）
-        var roles = user.Roles;
-
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.DisplayName ?? user.Email)
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
         };
-        if (!string.IsNullOrEmpty(user.AvatarUrl))
-            claims.Add(new Claim("avatar_url", user.AvatarUrl));
-        // 💡 新增角色資訊
-        foreach (var role in roles)
-        {
-            Console.WriteLine($"User has role: {role}");
-            claims.Add(new Claim(ClaimTypes.Role, role));
-        }
-        var id = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(id),
-            new AuthenticationProperties { IsPersistent = true });
 
+        public AccountController(IHttpClientFactory httpClientFactory)
+            => _httpClientFactory = httpClientFactory;
 
-        if (result.IsNew)
+        // 1️⃣ Google 登入入口
+        [HttpGet]
+        public IActionResult Google(string mode = "login", string returnUrl = "/")
         {
-            TempData["FlashMessage"] = "🎉 歡迎加入 SamaSama！你獲得了 100 銀幣！";
-            TempData["FlashType"] = "success";
+            var redirectUrl = Url.Action(nameof(GoogleCallback), "Account", new { mode, returnUrl });
+            var props = new AuthenticationProperties { RedirectUri = redirectUrl };
+            return Challenge(props, GoogleDefaults.AuthenticationScheme);
         }
 
-        return LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
-    }
+        // 2️⃣ Google 回調
+        [HttpGet]
+        public async Task<IActionResult> GoogleCallback(string mode = "login", string returnUrl = "/")
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-    [Authorize]
-    public async Task<IActionResult> Logout(string returnUrl = "/")
-    {
-        // 登出本站（Cookie）
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
-    }
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            var name = User.Identity?.Name ?? email ?? "User";
+            var avatar = User.Claims.FirstOrDefault(c => c.Type == "urn:google:picture")?.Value
+                      ?? User.Claims.FirstOrDefault(c => c.Type == "picture")?.Value;
 
-    // 若你還保留舊的「帳密登入」頁，可用這個 action 導頁
-    public IActionResult Login() => Redirect("/?auth=1");
+            if (string.IsNullOrWhiteSpace(email))
+                return LocalRedirect("/");
 
-	public IActionResult Beaboss()
-	{
-		return View("BeABoss"); // 對應 Views/Account/BeABoss.cshtml
-	}
+            // 2️⃣ 呼叫後端確保或建立使用者
+            var client = _httpClientFactory.CreateClient("BackendApi");
+            var payload = new GoogleEnsurePayload(
+                Email: email,
+                DisplayName: name,
+                AvatarUrl: avatar,
+                Mode: mode.Equals("register", StringComparison.OrdinalIgnoreCase) ? AuthMode.Register : AuthMode.Login
+            );
 
-    [Authorize]
-    [HttpGet]
-    public async Task<IActionResult> RefreshClaims(string returnUrl = "/")
-    {
-        Console.WriteLine("🔥 RefreshClaims triggered by " + User.Identity?.Name);
+            using var content = new StringContent(JsonSerializer.Serialize(payload, _jsonOpts), Encoding.UTF8, "application/json");
+            var resp = await client.PostAsync("/api/auth/google/auto", content);
 
-        // 1) 取目前登入者 UserId
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return LocalRedirect("/");
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                return Content($"Backend error {resp.StatusCode}\n{body}", "text/plain", Encoding.UTF8);
+            }
 
-        // 2) 呼叫 Backend.Api 拿最新的 Profile 與 Role
-        var client = _httpClientFactory.CreateClient("BackendApi");
+            var json = await resp.Content.ReadAsStringAsync();
+            Console.WriteLine("==== Backend JSON Response ====");
+            Console.WriteLine(json);
+            Console.WriteLine("===============================");
 
-        var profileResp = await client.GetAsync($"/api/BossInfo/user/{userId}");
-        if (!profileResp.IsSuccessStatusCode) return LocalRedirect("/");
+            var result = JsonSerializer.Deserialize<EnsureUserResponse>(json, _jsonOpts);
+            if (result?.User is null) return LocalRedirect("/");
 
-        var roleResp = await client.GetAsync($"/api/BossInfo/role/{userId}");
-        if (!roleResp.IsSuccessStatusCode) return LocalRedirect("/");
+            var user = result.User;
+            var roles = user.Roles;
 
-        var profileJson = await profileResp.Content.ReadAsStringAsync();
-        var roleJson = await roleResp.Content.ReadAsStringAsync();
+            // 3️⃣ 建立 Cookie Claims
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Name, user.DisplayName ?? user.Email),
+                new System.Security.Claims.Claim("active_mode", user.ActiveMode ?? roles.FirstOrDefault() ?? "CUSTOMER")
 
-        // 你已有對應 DTO；這裡簡化成 dynamic 讀值
-        using var doc1 = JsonDocument.Parse(profileJson);
-        using var doc2 = JsonDocument.Parse(roleJson);
+            };
 
-        var email = doc1.RootElement.GetProperty("email").GetString() ?? "";
-        var displayName = doc1.RootElement.GetProperty("displayName").GetString() ?? email;
-        var avatarUrl = doc1.RootElement.TryGetProperty("avatarUrl", out var av) ? av.GetString() ?? "" : "";
-        var roleId = doc2.RootElement.GetProperty("roleId").GetString() ?? "UNVERIFYBOSS";
+            if (!string.IsNullOrEmpty(user.AvatarUrl))
+                claims.Add(new Claim("avatar_url", user.AvatarUrl));
 
-        // 3) 重新簽 Cookie（帶入最新 Role）
-        var claims = new List<Claim>
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+                Console.WriteLine($"User has role: {role}");
+            }
+
+            var id = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(id),
+                new AuthenticationProperties { IsPersistent = true }
+            );
+
+            if (result.IsNew)
+            {
+                TempData["FlashMessage"] = "🎉 歡迎加入 SamaSama！你獲得了 100 銀幣！";
+                TempData["FlashType"] = "success";
+            }
+
+            return LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+        }
+
+        // 3️⃣ 登出
+        [Authorize]
+        public async Task<IActionResult> Logout(string returnUrl = "/")
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+        }
+
+        public IActionResult Login() => Redirect("/?auth=1");
+
+        public IActionResult Beaboss()
+        {
+            return View("BeABoss");
+        }
+
+        // 4️⃣ 切換使用模式 (B方案：redirect 同頁)
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> SwitchMode([FromBody] string roleId, string returnUrl = "/")
+        {
+            Console.WriteLine($"🔁 SwitchMode requested: {roleId}");
+
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdStr, out var userId))
+                return LocalRedirect("/");
+
+            var client = _httpClientFactory.CreateClient("BackendApi");
+
+            // 1️⃣ 更新後端 ActiveMode
+            using var content = new StringContent(JsonSerializer.Serialize(new { RoleId = roleId }), Encoding.UTF8, "application/json");
+            var resp = await client.PostAsync($"/api/UserRole/user/{userId}/switch-active-mode", content);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"⚠️ SwitchMode failed: {resp.StatusCode}");
+                return Ok(new { success = false });
+            }
+
+            // 2️⃣ 拿最新角色 + 模式
+            var rolesResp = await client.GetAsync($"/api/UserRole/user/{userId}/available-roles");
+            var modeResp = await client.GetAsync($"/api/UserRole/user/{userId}/active-mode");
+
+            var rolesJson = await rolesResp.Content.ReadAsStringAsync();
+            var modeJson = await modeResp.Content.ReadAsStringAsync();
+
+            using var doc1 = JsonDocument.Parse(rolesJson);
+            using var doc2 = JsonDocument.Parse(modeJson);
+
+            var roles = doc1.RootElement.EnumerateArray()
+                .Select(x => x.GetProperty("RoleId").GetString() ?? "")
+                .ToList();
+
+            var activeMode = doc2.RootElement.GetProperty("roleId").GetString() ?? "CUSTOMER";
+            Console.WriteLine("AM:" + activeMode);
+
+            // 3️⃣ 重簽 cookie
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                new Claim(ClaimTypes.Email, User.FindFirstValue(ClaimTypes.Email) ?? ""),
+                new Claim(ClaimTypes.Name, User.Identity?.Name ?? ""),
+                new Claim("active_mode", activeMode)
+            };
+
+            foreach (var role in roles)
+                claims.Add(new Claim(ClaimTypes.Role, role));
+
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)),
+                new AuthenticationProperties { IsPersistent = true });
+
+            Console.WriteLine($"✅ SwitchMode success: ActiveMode={activeMode}, Roles={string.Join(',', roles)}");
+
+            // B方案：回傳 JSON，前端 redirect 到同頁
+            return Ok(new { success = true, activeMode = activeMode });
+        }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> RefreshClaims()
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized("Invalid userId in claims");
+
+            var client = _httpClientFactory.CreateClient("BackendApi");
+
+            // 從 Backend 取角色 + 模式
+            var rolesResp = await client.GetAsync($"/api/UserRole/user/{userId}/available-roles");
+            var modeResp = await client.GetAsync($"/api/UserRole/user/{userId}/active-mode");
+
+            if (!rolesResp.IsSuccessStatusCode || !modeResp.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"❌ Backend failed: roles={rolesResp.StatusCode}, mode={modeResp.StatusCode}");
+                return StatusCode(500, "Fetch roles/active-mode failed");
+            }
+
+            var rolesJson = await rolesResp.Content.ReadAsStringAsync();
+            var modeJson = await modeResp.Content.ReadAsStringAsync();
+
+            using var docRoles = JsonDocument.Parse(rolesJson);
+            using var docMode = JsonDocument.Parse(modeJson);
+
+            var roles = docRoles.RootElement.EnumerateArray()
+                .Select(x =>
+                    x.TryGetProperty("RoleId", out var r1) ? r1.GetString() :
+                    x.TryGetProperty("roleId", out var r2) ? r2.GetString() :
+                    null)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var activeMode = docMode.RootElement.TryGetProperty("roleId", out var rActive)
+                ? rActive.GetString() ?? "CUSTOMER"
+                : "CUSTOMER";
+
+            Console.WriteLine($"✅ Refreshed ActiveMode: {activeMode}");
+
+            var email = User.FindFirstValue(ClaimTypes.Email) ?? "";
+            var name = User.FindFirstValue(ClaimTypes.Name) ?? email;
+            var avatar = User.FindFirst("avatar_url")?.Value ?? "";
+
+            var claims = new List<Claim>
     {
         new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
         new Claim(ClaimTypes.Email, email),
-        new Claim(ClaimTypes.Name, displayName),
-    };
-        if (!string.IsNullOrWhiteSpace(avatarUrl)) claims.Add(new Claim("avatar_url", avatarUrl));
-
-        // 重要：加入角色
-        claims.Add(new Claim(ClaimTypes.Role, roleId));
-
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
-        var id = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(id),
-            new AuthenticationProperties { IsPersistent = true });
-
-        Console.WriteLine($"ProfileResp: {profileResp.StatusCode}");
-        Console.WriteLine($"RoleResp: {roleResp.StatusCode}");
-        var body1 = await profileResp.Content.ReadAsStringAsync();
-        var body2 = await roleResp.Content.ReadAsStringAsync();
-        Console.WriteLine("PROFILE_JSON => " + body1);
-        Console.WriteLine("ROLE_JSON => " + body2);
-
-
-        // 4) 導回
-        return LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
-    }
-
-
-    [Authorize]
-    [HttpPost]
-    public async Task<IActionResult> SwitchMode([FromBody] string roleId, string returnUrl = "/")
-    {
-        Console.WriteLine($"🔁 SwitchMode requested: {roleId}");
-
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId)) return LocalRedirect("/");
-
-        var client = _httpClientFactory.CreateClient("BackendApi");
-
-        // 1️⃣ 更新後端 ActiveMode
-        using var content = new StringContent(JsonSerializer.Serialize(new { RoleId = roleId }), Encoding.UTF8, "application/json");
-        var resp = await client.PostAsync($"/api/UserRole/switch-active-mode/{userId}", content);
-
-        if (!resp.IsSuccessStatusCode)
-        {
-            Console.WriteLine($"⚠️ SwitchMode failed: {resp.StatusCode}");
-            return LocalRedirect(returnUrl);
-        }
-
-        // 2️⃣ 重新抓最新角色與模式
-        var rolesResp = await client.GetAsync($"/api/UserRole/{userId}");
-        var modeResp = await client.GetAsync($"/api/UserRole/active-mode/{userId}");
-
-        var rolesJson = await rolesResp.Content.ReadAsStringAsync();
-        var modeJson = await modeResp.Content.ReadAsStringAsync();
-
-        using var doc1 = JsonDocument.Parse(rolesJson);
-        using var doc2 = JsonDocument.Parse(modeJson);
-
-        // rolesJson 是一個陣列
-        var roles = doc1.RootElement.EnumerateArray().Select(x => x.GetProperty("RoleId").GetString() ?? "").ToList();
-        var activeMode = doc2.RootElement.GetProperty("roleId").GetString() ?? "CUSTOMER";
-
-        // 3️⃣ 重簽 cookie（帶入最新角色與 active_mode）
-        var claims = new List<Claim>
-    {
-        new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-        new Claim(ClaimTypes.Email, User.FindFirstValue(ClaimTypes.Email) ?? ""),
-        new Claim(ClaimTypes.Name, User.Identity?.Name ?? ""),
+        new Claim(ClaimTypes.Name, name),
         new Claim("active_mode", activeMode)
     };
+            if (!string.IsNullOrWhiteSpace(avatar))
+                claims.Add(new Claim("avatar_url", avatar));
+            foreach (var r in roles)
+                claims.Add(new Claim(ClaimTypes.Role, r));
 
-        foreach (var role in roles)
-            claims.Add(new Claim(ClaimTypes.Role, role));
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)),
-            new AuthenticationProperties { IsPersistent = true });
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+            HttpContext.User = principal;
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal,
+                new AuthenticationProperties { IsPersistent = true });
 
-        Console.WriteLine($"✅ SwitchMode success: ActiveMode={activeMode}, Roles={string.Join(',', roles)}");
+            return Ok(new { activeMode, roles });
+        }
 
-        return LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+
     }
-
 }
