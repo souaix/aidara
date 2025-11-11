@@ -4,6 +4,7 @@ using Backend.Application.Ports;
 using Backend.Application.Services.Boss;
 using Backend.Application.Shared;
 using Backend.Application.ViewModels;
+using Backend.Application.ViewModels.Boss;
 using Backend.Application.ViewModels.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -74,15 +75,40 @@ namespace Backend.Api.Controllers
         /// <summary>
         /// 取得單一商家的詳細資訊 (問卷結果 + 自定義 Quill 內容)
         /// </summary>
+        //[HttpGet("store/{userId:guid}")]
+        //public async Task<ActionResult<StoreDetailVm>> GetStoreDetail(Guid userId, CancellationToken ct)
+        //{
+        //    await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
+        //    var detail = await _bossStoreRepo.GetStoreDetailAsync(uow.Connection, uow.Transaction, userId, ct);
+        //    if (detail is null)
+        //        return NotFound();
+
+        //    return Ok(detail);
+        //}
+
+        /// <summary>
+        /// 取得小老闆所有上架的服務（含方法 / 範圍 / 地址）
+        /// </summary>
         [HttpGet("store/{userId:guid}")]
-        public async Task<ActionResult<StoreDetailVm>> GetStoreDetail(Guid userId, CancellationToken ct)
+        public async Task<ActionResult<List<BossServiceFullVm>>> GetBossServices(Guid userId, CancellationToken ct)
         {
             await using var uow = await _uowFactory.BeginAsync(withTransaction: false, ct);
-            var detail = await _bossStoreRepo.GetStoreDetailAsync(uow.Connection, uow.Transaction, userId, ct);
-            if (detail is null)
-                return NotFound();
+            var services = await _bossStoreRepo.GetBossServicesAsync(uow.Connection, uow.Transaction, userId, ct);
+            if (services == null || !services.Any())
+                return Ok(Array.Empty<BossServiceFullVm>()); // 統一回傳空陣列
 
-            return Ok(detail);
+            return Ok(services);
         }
+
+        [HttpPost("store/upsert")]
+        public async Task<IActionResult> UpsertService([FromBody] BossServiceUpsertDto dto, CancellationToken ct)
+        {
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
+
+            await _bossInfoRepo.UpsertBossServiceAsync(uow.Connection, uow.Transaction, dto, ct);
+ 
+            return NoContent();
+        }
+
     }
 }

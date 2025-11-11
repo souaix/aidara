@@ -13,64 +13,111 @@
 </div>
 
 <script>
-    (async function(){
+    (async function () {
         const wrap = document.getElementById("bossServiceList");
         const API_BASE = "https://localhost:7030";
-        try {
-            console.log("HERE START");
-            const res = await fetch(`${API_BASE}/api/BossInfo/user-services/@userId`);
-            console.log("HERE:", res);
 
-            if (!res.ok) throw new Error("服務資料載入失敗");
+        try {
+            console.log("Fetching Boss Services...");
+            const res = await fetch(`${API_BASE}/api/BossInfo/store/@userId`);
+
+            if (!res.ok) {
+                console.error("Response not OK:", res.status, await res.text());
+                throw new Error("服務資料載入失敗");
+            }
 
             const data = await res.json();
-            console.log("response data:", data);
+            console.log("Response data:", data);
 
-            if (!Array.isArray(data) || !data.length) {
-                wrap.innerHTML = `<div class="col-12 text-center text-muted py-5">
-                                    您尚未上架任何服務。
-                                  </div>`;
+            if (!Array.isArray(data) || data.length === 0) {
+                wrap.innerHTML = `
+                    <div class="col-12 text-center text-muted py-5">
+                        您尚未上架任何服務。
+                    </div>`;
                 return;
             }
 
-            wrap.innerHTML = data.map(s => `
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="card shadow-sm h-100 border-0">
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold">${s.itemName}</h5>
-                            <p class="text-muted mb-1">${s.categoryName} / ${s.subcategoryName}</p>
-                            <p class="mb-2 small">服務方式：${s.methods?.join(", ") || "未設定"}</p>
-                            <p class="mb-2 small">服務範圍：${s.areas?.map(a => a.cityName + a.districtName).join("、") || "未設定"}</p>
-                            <p class="mb-2 small">價格區間：${s.minPrice} ~ ${s.maxPrice}</p>
-                            <p class="mb-3 small">服務據點：${s.addresses?.map(a => `${a.cityName}${a.districtName}${a.street}${a.addressNo}`).join("<br>") || "未設定"}</p>
+            wrap.innerHTML = data.map(s => {
+                const methods = s.methods?.length
+                    ? s.methods.join("、")
+                    : "未設定";
 
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="badge bg-success">${s.status ?? "啟用中"}</span>
-                                <button class="btn btn-sm btn-outline-primary" onclick="editService('${s.itemId}')">
-                                    編輯
-                                </button>
+                const areas = s.areas?.length
+                    ? s.areas.map(a =>
+                        `${a.cityName ?? ""}${a.districtName ?? ""}${a.locality ? "（" + a.locality + "）" : ""}`
+                      ).join("、")
+                    : "未設定";
+
+                const addresses = s.addresses?.length
+                    ? s.addresses.map(a =>
+                        `${a.cityName ?? ""}${a.districtName ?? ""}${a.street ?? ""}${a.addressNo ?? ""}`
+                      ).join("<br>")
+                    : "未設定";
+
+                return `
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="card shadow-sm h-100 border-0">
+                            <div class="card-body">
+                                <h5 class="card-title fw-bold">${s.itemName ?? s.itemId}</h5>
+                                <p class="text-muted mb-1">
+                                    ${s.categoryName ?? "未分類"} / ${s.subcategoryName ?? ""}
+                                </p>
+                                <p class="mb-2 small">服務方式：${methods}</p>
+                                <p class="mb-2 small">服務範圍：${areas}</p>
+                                <p class="mb-2 small">價格區間：${s.minPrice ?? 0} ~ ${s.maxPrice ?? 0}</p>
+                                <p class="mb-3 small">服務據點：${addresses}</p>
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge bg-success">${s.status ?? "啟用中"}</span>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="editService('${s.itemId}')">
+                                        編輯
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            `).join("");
+                    </div>`;
+            }).join("");
 
         } catch (err) {
-            console.error(err);
-            wrap.innerHTML = `<div class="text-danger text-center py-5">載入服務資料失敗，請稍後再試。</div>`;
+            console.error("Load services error:", err);
+            wrap.innerHTML = `
+                <div class="text-danger text-center py-5">
+                    載入服務資料失敗，請稍後再試。
+                </div>`;
         }
     })();
 
-    async function editService(itemId){
-        const res = await fetch(`/BossServices/Edit/${itemId}`);
-        if (res.ok) {
-            const html = await res.text();
-            const modal = document.createElement("div");
-            modal.innerHTML = html;
-            document.body.appendChild(modal);
-            // 若你要用 Bootstrap Modal，可在這裡顯示 modal
-        } else {
-            alert("無法開啟編輯頁面");
-        }
+async function editService(itemId) {
+    console.log("[editService] Start fetch for item:", itemId);
+
+    const res = await fetch(`/BossServices/Edit/${itemId}`);
+    console.log("[editService] Response status:", res.status);
+
+    if (!res.ok) {
+        console.error("[editService] Fetch failed");
+        alert("無法開啟編輯頁面");
+        return;
     }
+
+    const html = await res.text();
+    console.log("[editService] HTML length:", html.length);
+    console.log("[editService] HTML snippet:", html.substring(0, 200));
+
+    // 把內容轉成 DOM 元素
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html.trim();
+
+    // 把 modal 本體插入畫面
+    const modalEl = tempDiv.querySelector(".modal");
+    document.body.appendChild(modalEl);
+
+    // ✅ 直接執行初始化（不依賴 <script>）
+    console.log("[editService] Executing Bootstrap modal manually...");
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+    console.log("[editService] Modal.show() done");
+}
+
+
 </script>

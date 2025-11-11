@@ -13,14 +13,14 @@
     Layout = "_Layout";
 
     // 讀目前模式（由 /Account/SwitchMode 重簽 cookie 時更新）
-    var activeMode = User.FindFirst("active_mode")?.Value ?? "CUSTOMER33";
+    var activeMode = User.FindFirst("active_mode")?.Value ?? "CUSTOMER";
 
     // 只要目前模式含 BOSS 就顯示小老闆畫面
     bool isBoss = activeMode.Contains("BOSS", StringComparison.OrdinalIgnoreCase);
 
     Console.WriteLine($"ActiveMode: {activeMode}");
 }
-@* 
+
 <div class="container mt-4">
     @if (!isBoss)
     {
@@ -32,7 +32,7 @@
         <!-- 已是小老闆：顯示服務資訊 -->
         @await Html.PartialAsync("_BossDashboardPartial")
     }
-</div> *@
+</div>
 
 @section Scripts {
     @if (!isBoss)
