@@ -1,0 +1,80 @@
+﻿@model Frontend.Web.ViewModels.BossServiceEditVm
+
+<div class="modal fade" id="bossServiceEditModal" tabindex="-1" aria-labelledby="bossServiceEditModalLabel">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="bossServiceEditModalLabel">服務編輯</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">價格區間</label>
+                    <div class="row">
+                        <div class="col">
+                            <input id="minPrice" type="number" class="form-control" placeholder="最低價格">
+                        </div>
+                        <div class="col">
+                            <input id="maxPrice" type="number" class="form-control" placeholder="最高價格">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">服務範圍</label>
+                    <div id="serviceAreas"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">服務據點</label>
+                    <div id="serviceAddresses"></div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                <button class="btn btn-primary">儲存（後面再做）</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+
+    console.log("[Modal Partial] Script loaded");
+    const modalEl = document.getElementById("bossServiceEditModal");
+    if (!modalEl) {
+        console.error("[Modal Partial] bossServiceEditModal not found in DOM!");
+    } else {
+        console.log("[Modal Partial] bossServiceEditModal found, initializing Bootstrap modal");
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        console.log("[Modal Partial] Modal.show() executed");
+    }
+
+    function addArea() {
+        const container = document.getElementById("serviceAreas");
+        const row = document.createElement("div");
+        row.className = "row g-2 mb-2 area-row";
+        row.innerHTML = `
+            <div class="col-md-5">
+                <input type="number" class="form-control" placeholder="CityId" />
+            </div>
+            <div class="col-md-5">
+                <input type="number" class="form-control" placeholder="DistrictId" />
+            </div>
+            <div class="col-md-2 d-flex align-items-center">
+                <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="this.closest('.area-row').remove()">刪除</button>
+            </div>
+        `;
+        container.appendChild(row);
+    }
+
+    // 當 partial 被 append 時自動顯示 modal
+    const modalEl = document.getElementById("bossServiceEditModal");
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+</script>

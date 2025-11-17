@@ -1,8 +1,9 @@
 ﻿// Infrastructure/Persistence/Postgres/BossInfoRepo.cs
-using System.Data;
 using Backend.Application.Ports;
+using Backend.Application.ViewModels.Boss;
 using Backend.Application.ViewModels.Services;
 using Dapper;
+using System.Data;
 
 namespace Backend.Infrastructure.Persistence.Postgres;
 
@@ -42,12 +43,7 @@ public sealed class BossInfoRepo : IBossInfoRepo
         }
     }
 
-    public async Task ReplaceAreasAsync(
-        IDbConnection conn,
-        IDbTransaction? tx,
-        Guid userId,
-        List<ServiceAreaDto> areas,
-        CancellationToken ct)
+    public async Task ReplaceAreasAsync(IDbConnection conn, IDbTransaction? tx,Guid userId,List<ServiceAreaDto> areas,CancellationToken ct)
     {
         // 先刪除舊資料
         await conn.ExecuteAsync(
@@ -113,4 +109,82 @@ public sealed class BossInfoRepo : IBossInfoRepo
                 new CommandDefinition(sql, new { userId, addr.CityId, addr.DistrictId, addr.Street, addr.AddressNo }, tx, cancellationToken: ct));
         }
     }
+
+    public async Task UpsertItemAsync(
+        IDbConnection conn, IDbTransaction? tx,
+        Guid userId, ItemPriceRangeDto item, CancellationToken ct)
+    {
+        const string sql = """
+        INSERT INTO boss_service_item (id, user_id, item_id, min_price, max_price, created_at)
+        VALUES (gen_random_uuid(), @UserId, @ItemId, @MinPrice, @MaxPrice, now())
+        ON CONFLICT (user_id, item_id)
+        DO UPDATE SET 
+            min_price = EXCLUDED.min_price,
+            max_price = EXCLUDED.max_price;
+    """;
+
+        await conn.ExecuteAsync(new CommandDefinition(
+            sql,
+            new { UserId = userId, item.ItemId, item.MinPrice, item.MaxPrice },
+            tx,
+            cancellationToken: ct));
+    }
+
+    public async Task ReplaceAreasForItemAsync(
+        IDbConnection conn, IDbTransaction? tx,
+        Guid userId, string itemId, List<ServiceAreaDto> areas, CancellationToken ct)
+    {
+        const string deleteSql = """
+        DELETE FROM boss_service_area
+        WHERE user_id = @UserId AND item_id = @ItemId;
+    """;
+
+        await conn.ExecuteAsync(new CommandDefinition(deleteSql, new { UserId = userId, ItemId = itemId }, tx, cancellationToken: ct));
+
+        if (areas == null || areas.Count == 0)
+            return;
+
+        const string insertSql = """
+        INSERT INTO boss_service_area
+            (id, user_id, item_id, city_id, district_id, postal_id, created_at)
+        VALUES
+            (gen_random_uuid(), @UserId, @ItemId, @CityId, @DistrictId, @PostalId, now());
+    """;
+
+        foreach (var a in areas)
+        {
+            await conn.ExecuteAsync(new CommandDefinition(
+                insertSql,
+                new
+                {
+                    UserId = userId,
+                    ItemId = itemId,
+                    a.CityId,
+                    a.DistrictId,
+                    a.PostalId
+                },
+                tx,
+                cancellationToken: ct));
+        }
+    }
+
+    public async Task UpsertBossServiceAsync(
+        IDbConnection conn, IDbTransaction? tx,
+        BossServiceUpsertDto dto, CancellationToken ct)
+    {
+        // Step 1: upsert 單筆 item
+        var item = new ItemPriceRangeDto
+        {
+            ItemId = dto.ItemId,
+            MinPrice = dto.MinPrice,
+            MaxPrice = dto.MaxPrice
+        };
+        await UpsertItemAsync(conn, tx, dto.UserId, item, ct);
+
+        // Step 2: 更新該 item 的範圍
+        await ReplaceAreasForItemAsync(conn, tx, dto.UserId, dto.ItemId, dto.ServiceAreas, ct);
+
+        // Step 3: 全域方法/地址不動
+    }
+
 }

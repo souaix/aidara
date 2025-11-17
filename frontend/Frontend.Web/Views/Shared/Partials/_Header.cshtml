@@ -170,9 +170,9 @@
 
       console.log("🌀 切換模式中 →", roleId);
 
-    // 🌟 立即更新暫存名稱避免閃爍
-    pendingRoleName = roleName;
-    document.getElementById("current-mode-label").textContent = roleName;
+      // 🌟 立即更新暫存名稱避免閃爍
+      pendingRoleName = roleName;
+      document.getElementById("current-mode-label").textContent = roleName;
 
       // ✅ 呼叫 switch-active-mode
       const resp = await fetch(`${API_BASE}/api/UserRole/user/${userId}/switch-active-mode`, {
@@ -190,6 +190,18 @@
 
       // ✅ 立即顯示新中文名稱
       document.getElementById("current-mode-label").textContent = roleName;
+
+      // ✅ 呼叫 RefreshClaims（立即重簽 cookie）
+      try {
+        const refresh = await fetch(`/Account/RefreshClaims`, { credentials: "include" });
+        if (refresh.ok) {
+          console.log("✅ Claims refreshed after mode switch.");
+        } else {
+          console.warn("⚠️ RefreshClaims failed:", refresh.status);
+        }
+      } catch (err) {
+        console.error("🚨 RefreshClaims error:", err);
+      }
 
       // ✅ 再次呼叫 active-mode 以確認更新成功
       const active = await getActiveMode(userId);

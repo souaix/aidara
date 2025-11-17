@@ -1,6 +1,7 @@
 ﻿// Application/Ports/IBossStoreRepo.cs
-using System.Data;
+using Backend.Application.ViewModels.Boss;
 using Backend.Application.ViewModels.Services;
+using System.Data;
 
 namespace Backend.Application.Ports;
 
@@ -15,4 +16,6 @@ public interface IBossStoreRepo
     /// 取得單一商家的詳細資訊 (問卷結果 + 自定義 Quill 內容)
     /// </summary>
     Task<StoreDetailVm?> GetStoreDetailAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, CancellationToken ct);
+   
+    Task<List<BossServiceFullVm>> GetBossServicesAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, CancellationToken ct);
 }

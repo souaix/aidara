@@ -1,7 +1,8 @@
 ﻿// Infrastructure/Persistence/Mock/MockBossStoreRepo.cs
-using System.Data;
 using Backend.Application.Ports;
+using Backend.Application.ViewModels.Boss;
 using Backend.Application.ViewModels.Services;
+using System.Data;
 
 namespace Backend.Infrastructure.Persistence.Mock;
 
@@ -10,7 +11,7 @@ public sealed class MockBossStoreRepo : IBossStoreRepo
     // 模擬 5 筆假資料
     private static readonly List<StoreVm> Stores = new()
     {
-        new StoreVm(Guid.Parse("11111111-1111-1111-1111-111111111111"), "小王水電", "/images/default-avatar.png", Guid.Empty, "水電維修",
+        new StoreVm(Guid.Parse("4d0c960f-5fda-4605-9c5a-ca087fe7f714"), "小王水電", "/images/default-avatar.png", Guid.Empty, "水電維修",
             new[] { "到府服務", "線上估價" }, 4.5m, "台北市", "文山區"),
         new StoreVm(Guid.Parse("22222222-2222-2222-2222-222222222222"), "阿美清潔", "/images/default-avatar.png", Guid.Empty, "清潔服務",
             new[] { "到府清潔" }, 4.8m, "台北市", "文山區"),
@@ -66,5 +67,62 @@ public sealed class MockBossStoreRepo : IBossStoreRepo
         };
 
         return Task.FromResult<StoreDetailVm?>(detail);
+    }
+
+    public Task<List<BossServiceFullVm>> GetBossServicesAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, CancellationToken ct)
+    {
+        // 模擬三個服務項目
+        var list = new List<BossServiceFullVm>
+        {
+            new BossServiceFullVm
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ItemId = "interior001",
+                MinPrice = 1500,
+                MaxPrice = 5000,
+                CreatedAt = DateTime.UtcNow.AddDays(-3),
+                Methods = new List<string> { "到府服務", "線上諮詢" },
+                Areas = new List<BossServiceAreaVm>
+                {
+                    new BossServiceAreaVm { CityId = 1, DistrictId = 101, Note = "台北市中山區" },
+                    new BossServiceAreaVm { CityId = 1, DistrictId = 105, Note = "台北市松山區" }
+                },
+                Addresses = new List<BossServiceAddressVm>
+                {
+                    new BossServiceAddressVm {
+                        CityId = 1, DistrictId = 101,
+                        Street = "南京東路", AddressNo = "12號3樓",
+                        Phone = "0912-345-678", ContactName = "林小姐",
+                        Lat = 25.0478m, Lng = 121.5319m
+                    }
+                }
+            },
+            new BossServiceFullVm
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ItemId = "cleaning002",
+                MinPrice = 800,
+                MaxPrice = 2000,
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                Methods = new List<string> { "包月清潔" },
+                Areas = new List<BossServiceAreaVm>
+                {
+                    new BossServiceAreaVm { CityId = 2, DistrictId = 202, Note = "新北市板橋區" }
+                },
+                Addresses = new List<BossServiceAddressVm>
+                {
+                    new BossServiceAddressVm {
+                        CityId = 2, DistrictId = 202,
+                        Street = "文化路", AddressNo = "88號",
+                        Phone = "0933-123-999", ContactName = "王先生",
+                        Lat = 25.013m, Lng = 121.467m
+                    }
+                }
+            }
+        };
+
+        return Task.FromResult(list);
     }
 }
