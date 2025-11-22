@@ -20,43 +20,42 @@
                     <li class="nav-item"><a class="nav-link" asp-controller="CustomerServices" asp-action="BossMode">小老闆模式</a></li>
                 </ul>
 
-                <div class="d-flex gap-2">
+                <!-- 右側：統一放在 navbar-nav 裡 -->
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                     @if (User.Identity?.IsAuthenticated ?? false)
                     {
                         <input type="hidden" id="currentUserId" value="@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value" />
-                        <span class="navbar-text me-2">@User.Identity.Name</span>
-
                         <li class="nav-item">
-                            <a class="btn btn-outline-primary ms-2"
-                               asp-controller="CustomerServices"
-                               asp-action="RequestService">
-                                徵求服務
-                            </a>
+                            <span class="navbar-text me-2">@User.Identity.Name</span>
                         </li>
-                        <a class="btn btn-outline-secondary"
-                           asp-controller="Account"
-                           asp-action="Logout"
-                           asp-route-returnUrl="@Context.Request.Path">登出</a>
+                        <li class="nav-item">
+                            <a class="btn btn-outline-primary ms-2" asp-controller="CustomerServices" asp-action="RequestService">徵求服務</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="btn btn-outline-secondary ms-2" asp-controller="Account" asp-action="Logout" asp-route-returnUrl="@Context.Request.Path">登出</a>
+                        </li>
                     }
                     else
                     {
-                        <a class="btn btn-outline-secondary" asp-controller="Account" asp-action="Login">登入</a>
+                        <li class="nav-item">
+                            <a class="btn btn-outline-secondary" asp-controller="Account" asp-action="Login">登入</a>
+                        </li>
                     }
 
                     <li class="nav-item">
-                        <a class="btn btn-primary" asp-controller="BossServices" asp-action="Beaboss">成為達人</a>
+                        <a class="btn btn-primary ms-2" asp-controller="BossServices" asp-action="Beaboss">成為達人</a>
                     </li>
 
-                    <!-- 🔽 模式切換下拉 -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    <!-- ✅ 正統的 navbar dropdown 結構 -->
+                    <li class="nav-item dropdown ms-2">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             模式：<span id="current-mode-label"></span>
                         </a>
                         <ul class="dropdown-menu" id="role-switch-menu">
                             <li><span class="dropdown-item text-muted">載入中...</span></li>
                         </ul>
                     </li>
-                </div>
+                </ul>
             </div>
         </div>
     </nav>
@@ -100,6 +99,7 @@
 <script>
     
     let pendingRoleName = null;// 🌟 暫存即將切換的角色名稱
+    const API_BASE = window.API_BASE ?? "https://localhost:7030";
 
     async function getActiveMode(userId) {
       try {
