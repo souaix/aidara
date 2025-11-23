@@ -35,8 +35,11 @@
 
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
-                <button class="btn btn-primary">儲存（後面再做）</button>
+                <button class="btn btn-primary" onclick="saveService()">儲存</button>
             </div>
+
+            <input type="hidden" id="userId" value="@Model.UserId" />
+            <input type="hidden" id="itemId" value="@Model.ItemId" />
 
         </div>
     </div>

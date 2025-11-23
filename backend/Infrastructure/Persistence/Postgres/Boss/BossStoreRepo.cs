@@ -115,6 +115,8 @@ public sealed class BossStoreRepo : IBossStoreRepo
             lc.city_name        AS CityName,
             a.district_id       AS DistrictId,
             ld.district_name    AS DistrictName,
+            a.postal_id         AS PostalId,
+            lp.postal_code      AS PostalCode,
             lp.locality         AS Locality,
             a.note              AS AreaNote,
 
@@ -125,6 +127,7 @@ public sealed class BossStoreRepo : IBossStoreRepo
             ld2.district_name   AS AddrDistrictName,
             ad.street           AS Street,
             ad.address_no       AS AddressNo,
+            ad.postal_id        AS AddressPostalId,
             ad.phone            AS Phone,
             ad.contact_name     AS ContactName,
             ad.lat              AS Lat,
@@ -132,7 +135,7 @@ public sealed class BossStoreRepo : IBossStoreRepo
         FROM boss_service_item i
         JOIN vw_service_hierarchy_zh vh ON vh.item_id = i.item_id
         LEFT JOIN boss_service_method   m  ON m.user_id = i.user_id
-        LEFT JOIN boss_service_area     a  ON a.user_id = i.user_id
+        LEFT JOIN boss_service_area     a  ON a.user_id = i.user_id AND (a.item_id = i.item_id OR a.item_id IS NULL)
         LEFT JOIN location_city         lc ON lc.city_id = a.city_id
         LEFT JOIN location_district     ld ON ld.district_id = a.district_id
         LEFT JOIN location_postal       lp ON lp.postal_id = a.postal_id
@@ -181,6 +184,8 @@ public sealed class BossStoreRepo : IBossStoreRepo
                     DistrictId = r.DistrictId,
                     CityName = r.CityName,
                     DistrictName = r.DistrictName,
+                    PostalId = r.PostalId,
+                    PostalCode = r.PostalCode,
                     Locality = r.Locality,
                     Note = r.AreaNote
                 });
@@ -195,6 +200,7 @@ public sealed class BossStoreRepo : IBossStoreRepo
                     DistrictName = r.AddrDistrictName,
                     Street = r.Street,
                     AddressNo = r.AddressNo,
+                    AddressPostalId = r.AddressPostalId,
                     Phone = r.Phone,
                     ContactName = r.ContactName,
                     Lat = r.Lat,

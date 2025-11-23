@@ -100,14 +100,52 @@ namespace Backend.Api.Controllers
             return Ok(services);
         }
 
+        /// <summary>
+        /// 取代小老闆的服務區域（完整覆蓋）
+        /// </summary>
+        [HttpPost("store/upsertServiceAreas/{userId:guid}")]
+        public async Task<IActionResult> UpsertServiceAreas(Guid userId, [FromBody] List<ServiceAreaDto> areas, CancellationToken ct)
+        {
+
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
+
+            await _bossInfoRepo.ReplaceAreasAsync(uow.Connection, uow.Transaction, userId, areas, ct);
+
+            await uow.CommitAsync();   // ⬅ 一定要有這行
+
+            return NoContent();
+
+        }
+
+        /// <summary>
+        /// 取代小老闆的服務據點（完整覆蓋）
+        /// </summary>
+        [HttpPost("store/upsertServiceAddresses/{userId:guid}")]
+        public async Task<IActionResult> UpsertServiceAddresses(Guid userId, [FromBody] List<ServiceAddressDto> addresses, CancellationToken ct)
+        {
+
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
+
+            await _bossInfoRepo.ReplaceAddressesAsync(uow.Connection, uow.Transaction, userId, addresses, ct);
+
+            await uow.CommitAsync();   // ⬅ 一定要有這行
+
+            return NoContent();
+
+        }
+
         [HttpPost("store/upsert")]
         public async Task<IActionResult> UpsertService([FromBody] BossServiceUpsertDto dto, CancellationToken ct)
         {
+
             await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
 
             await _bossInfoRepo.UpsertBossServiceAsync(uow.Connection, uow.Transaction, dto, ct);
- 
+
+            await uow.CommitAsync();   // ⬅ 一定要有這行
+
             return NoContent();
+
         }
 
     }

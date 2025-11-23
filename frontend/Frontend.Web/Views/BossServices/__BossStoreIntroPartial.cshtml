@@ -33,7 +33,7 @@
 </div>
 
 <script>
-    const API_BASE = "https://localhost:7030";
+    // const API_BASE = "https://localhost:7030";
     const userId = "@userId";
     let quill;
     let currentHtml = "";
@@ -60,7 +60,7 @@
     async function loadIntro() {
         const wrap = document.getElementById("storeContent");
         try {
-            const res = await fetch(`${API_BASE}/api/bossstorecontent/${userId}`);
+            const res = await fetch(`${API_BASE}/api/BossStoreContent/${userId}`);
             if (!res.ok) throw new Error("讀取失敗");
             const data = await res.json();
             currentHtml = data?.contentHtml || "";
@@ -84,22 +84,22 @@
     async function saveContent() {
         const html = quill.root.innerHTML;
         try {
-            const res = await fetch(`${API_BASE}/api/bossstorecontent/${userId}`, {
+            const res = await fetch(`${API_BASE}/api/BossStoreContent/${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contentHtml: html })
             });
 
             if (res.ok) {
-                alert("✅ 自定義內容已儲存");
+                showBootstrapAlert('success', '✅ 自定義內容已儲存');
                 currentHtml = html;
                 cancelEdit();
                 document.getElementById("storeContent").innerHTML = html;
             } else {
-                alert("❌ 儲存失敗");
+                showBootstrapAlert('danger', '❌ 儲存失敗');
             }
         } catch (err) {
-            alert("❌ 儲存過程出錯");
+            showBootstrapAlert('danger', '❌ 儲存失敗');
             console.error(err);
         }
     }

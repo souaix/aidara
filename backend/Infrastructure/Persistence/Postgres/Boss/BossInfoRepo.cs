@@ -4,6 +4,8 @@ using Backend.Application.ViewModels.Boss;
 using Backend.Application.ViewModels.Services;
 using Dapper;
 using System.Data;
+using System.Numerics;
+using System.Text.Json;
 
 namespace Backend.Infrastructure.Persistence.Postgres;
 
@@ -64,11 +66,11 @@ public sealed class BossInfoRepo : IBossInfoRepo
         // 寫入多筆
         const string insertSql = """
         INSERT INTO boss_service_area
-            (id, user_id, item_id, city_id, district_id, postal_id, created_at)
+            (id, user_id, item_id, city_id, district_id, postal_id, note, created_at)
         VALUES
-            (gen_random_uuid(), @UserId, @ItemId, @CityId, @DistrictId, @PostalId, now())
-        ON CONFLICT (user_id, item_id, postal_id) DO NOTHING;
-    """;
+            (gen_random_uuid(), @UserId, @ItemId, @CityId, @DistrictId, @PostalId, @Note, now())
+        ON CONFLICT (user_id, item_id, city_id, district_id, postal_id) DO NOTHING;
+    """; // user_id, item_id, postal_id 改 user_id, item_id, city_id, district_id, postal_id
 
         // 組合展開資料
         var expanded = new List<object>();
@@ -82,7 +84,8 @@ public sealed class BossInfoRepo : IBossInfoRepo
                     ItemId = itemId, // string
                     CityId = area.CityId,
                     DistrictId = area.DistrictId,
-                    PostalId = area.PostalId
+                    PostalId = area.PostalId == 0 ? null : area.PostalId,
+                    Note = area.Note
                 });
             }
         }
@@ -100,16 +103,18 @@ public sealed class BossInfoRepo : IBossInfoRepo
         {
             const string sql = """
                 INSERT INTO boss_service_address 
-                    (id, user_id, city_id, district_id, street, address_no, created_at, updated_at)
+                    (id, user_id, city_id, district_id, street, address_no, postal_id, phone, contact_name, created_at, updated_at)
                 VALUES 
-                    (gen_random_uuid(), @userId, @CityId, @DistrictId, @Street, @AddressNo, now(), now());
+                    (gen_random_uuid(), @userId, @CityId, @DistrictId, @Street, @AddressNo, @PostalId, @Phone, @ContactName, now(), now());
             """;
 
+            var postalId = addr.PostalId == 0 ? null : addr.PostalId;
+
             await conn.ExecuteAsync(
-                new CommandDefinition(sql, new { userId, addr.CityId, addr.DistrictId, addr.Street, addr.AddressNo }, tx, cancellationToken: ct));
+                new CommandDefinition(sql, new { userId, addr.CityId, addr.DistrictId, addr.Street, addr.AddressNo, postalId, addr.Phone, addr.ContactName }, tx, cancellationToken: ct));
         }
     }
-
+   
     public async Task UpsertItemAsync(
         IDbConnection conn, IDbTransaction? tx,
         Guid userId, ItemPriceRangeDto item, CancellationToken ct)

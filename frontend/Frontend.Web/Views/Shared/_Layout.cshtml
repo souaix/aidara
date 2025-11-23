@@ -43,6 +43,7 @@
     @Html.Partial("~/Views/Shared/Partials/_Footer.cshtml")
 
     <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/alarmMessage.js"></script>
     @RenderSection("scripts", required: false)
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -127,6 +128,12 @@
         });
     </script>
 
+
+    <!-- 全域訊息區：會出現在畫面上方中間 -->
+    <div id="globalAlertContainer"
+         class="position-fixed top-0 start-50 translate-middle-x p-3"
+         style="z-index: 1080; min-width: 320px; max-width: 480px;">
+    </div>
 
 </body>
 </html>

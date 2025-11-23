@@ -1,0 +1,140 @@
+﻿@model Frontend.Web.ViewModels.BossStoreEditVm
+
+<div class="modal fade" id="bossStoreEditModal" tabindex="-1" aria-labelledby="bossStoreEditModalLabel">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="bossStoreEditModalLabel">我的服務設定（共用）</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <!-- 服務方式（checkbox 群組） -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">服務方式</label>
+
+                    <!-- 保持乾淨，讓 CSS 控制裡面排版 -->
+                    <div id="storeMethods" class="d-flex flex-row flex-wrap align-items-start gap-3"></div>
+
+                    <small class="text-muted d-block mt-1">
+                        之後會從資料庫載入，目前先提供幾個範例選項。
+                    </small>
+                </div>
+
+                <!-- 服務範圍（多筆） -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">服務範圍</label>
+
+                    <!-- 已選範圍清單 -->
+                    <div id="storeAreas" class="d-flex flex-wrap gap-2"></div>
+
+                    <!-- 新增一筆服務範圍（編輯列） -->
+                    <div class="mt-3">
+                        <div class="row g-2 align-items-center" id="storeAreaEditor">
+                            <div class="col-md-4">
+                                <select class="form-select form-select-sm" id="newAreaCity">
+                                    <option value="">縣市</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select form-select-sm" id="newAreaDistrict" disabled>
+                                    <option value="">行政區</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select form-select-sm" id="newAreaPostal" disabled>
+                                    <option value="">郵遞區號 / 里</option>
+                                </select>
+                            </div>
+                            <div class="col-md-11">
+                                <input type="text"
+                                       class="form-control form-control-sm"
+                                       id="newAreaNote"
+                                       placeholder="備註 / 地標（選填）">
+                            </div>
+                            <div class="col-md-1 text-end">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        id="btnAreaAdd">
+                                    新增
+                                </button>
+                            </div>
+                        </div>
+
+                        <small class="text-muted d-block mt-1">
+                            可設定多個縣市與行政區，例如「桃園市 中壢區」、「新竹市 東區 校園附近」。
+                        </small>
+                    </div>
+                </div>
+
+                <!-- 服務據點（多筆） -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">服務據點</label>
+
+                    <!-- 上方：已設定的據點（tag 清單，一筆一列） -->
+                    <div id="storeAddresses" class="mb-2"></div>
+
+                    <!-- 下方：新增一筆服務據點的編輯列 -->
+                    <div class="mt-3">
+                        <div class="row g-2 align-items-center" id="storeAddressEditor">
+                            <div class="col-md-4">
+                                <select class="form-select form-select-sm" id="newAddressCity">
+                                    <option value="">縣市</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select form-select-sm" id="newAddressDistrict" disabled>
+                                    <option value="">行政區</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select form-select-sm" id="newAddressPostal" disabled>
+                                    <option value="">郵遞區號 / 里</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text"
+                                       class="form-control form-control-sm"
+                                       id="newAddressStreet"
+                                       placeholder="街道 / 門牌">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text"
+                                       class="form-control form-control-sm"
+                                       id="newAddressPhone"
+                                       placeholder="聯絡電話（選填）">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text"
+                                       class="form-control form-control-sm"
+                                       id="newAddressContact"
+                                       placeholder="聯絡人姓名（選填）">
+                            </div>
+                            <div class="col-md-1 text-end">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary w-100"
+                                        id="btnAddAddress">
+                                    新增
+                                </button>
+                            </div>
+                        </div>
+                      
+                    </div>
+                    <small class="text-muted d-block mt-1">
+                        可設定多個實體地址，例如「桃園市中壢區中北路 200 號」。
+                    </small>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                <button class="btn btn-primary" id="btnStoreSave" onclick="saveStore()">儲存</button>
+            </div>
+
+            <input type="hidden" id="userId" value="@Model.UserId" />
+        </div>
+    </div>
+</div>

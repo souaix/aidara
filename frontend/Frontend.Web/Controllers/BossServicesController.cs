@@ -12,6 +12,27 @@ namespace Frontend.Web.Controllers
         }
 
         /// <summary>
+        /// 編輯共用服務設定
+        /// </summary>
+        [HttpGet("/BossServices/EditStore")]
+        public IActionResult EditStore()
+        {
+            // 從登入資訊取得 UserId
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized();
+
+            // 建立 ViewModel
+            var vm = new BossStoreEditVm
+            {
+                UserId = userId
+            };
+
+            // 回傳部分視圖（partial）
+            return PartialView("___BossStoreFormPartial", vm);
+        }
+
+        /// <summary>
         /// 編輯既有服務項目
         /// </summary>
         [HttpGet("/BossServices/Edit/{itemId}")]

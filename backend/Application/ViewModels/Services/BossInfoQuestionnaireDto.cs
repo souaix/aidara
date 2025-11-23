@@ -47,6 +47,7 @@ public class ServiceAreaDto
     public int DistrictId { get; set; }
     /// <summary>  郵遞區號  </summary>
     public int? PostalId { get; set; }
+    public string? Note { get; set; }
 }
 
 /// <summary>服務據點地址</summary>
@@ -61,8 +62,10 @@ public class ServiceAddressDto
     public int? PostalId { get; set; }
 
     /// <summary>街道名稱</summary>
-    public string Street { get; set; } = string.Empty;
+    public string? Street { get; set; } // = string.Empty;
 
     /// <summary>門牌號碼</summary>
-    public string AddressNo { get; set; } = string.Empty;
+    public string? AddressNo { get; set; } // = string.Empty;
+    public string? Phone { get; set; }
+    public string? ContactName { get; set; }
 }

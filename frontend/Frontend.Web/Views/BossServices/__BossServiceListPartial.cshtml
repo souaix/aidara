@@ -10,7 +10,15 @@
     <!-- 共用服務設定（服務方式 / 服務範圍 / 服務據點） -->
     <div id="bossServiceGlobalSettings" class="card mb-4 d-none">
         <div class="card-body">
-            <h5 class="card-title fw-bold">我的服務設定（共用）</h5>
+            @* <h5 class="card-title fw-bold">我的服務設定（共用）</h5> *@
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="card-title fw-bold mb-0">我的服務設定（共用）</h5>
+                <button type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        onclick="editStore()">
+                    編輯
+                </button>
+            </div>
             <p class="mb-2">
                 <span class="fw-bold">服務方式：</span>
                 <span id="globalMethods" class="text-muted">未設定</span>
@@ -34,47 +42,67 @@
 
 <script>
     let servicesData = [];
+    let storeInfo = null; // 共用設定（服務方式 / 範圍 / 據點）
+    let storeAreasData = [];   // 例如 [{ cityId, cityName, districtId, districtName, postalId, postalCode, locality, note }]
+    let storeAddressData = [];
+    let currentEditingService = null;
 
+    // === 地區資料 cache ===
+    let locationCities = null;                         // [{ cityId, cityName, code }]
+    const locationDistrictsByCity = {};               // cityId -> [{ districtId, districtName, code }]
+    const locationPostalsByDistrict = {};             // districtId -> [{ postalId, districtId, postalCode, locality }]
+
+
+     // 把共用設定顯示在上面的卡片
+    function updateGlobalCard(store) {
+        const globalCard = document.getElementById("bossServiceGlobalSettings");
+        if (!globalCard || !store) return;
+
+        const methods = store.methods?.length
+            ? store.methods.join("、")
+            : "未設定";
+
+        const areas = store.areas?.length
+            ? store.areas.map(a =>
+                `${a.cityName ?? ""}${a.districtName ?? ""}${a.locality ? "（" + a.locality + "）" : ""}`
+            ).join("、")
+            : "未設定";
+
+        const addresses = store.addresses?.length
+            ? store.addresses.map(a =>
+                `${a.cityName ?? ""}${a.districtName ?? ""}${a.street ?? ""}${a.addressNo ?? ""}`
+            ).join("、")
+            : "未設定";
+
+        document.getElementById("globalMethods").textContent = methods;
+        document.getElementById("globalAreas").textContent = areas;
+        document.getElementById("globalAddresses").textContent = addresses;
+
+        globalCard.classList.remove("d-none");
+    }
+
+    // ================================
+    // 首次載入：抓 store 資料 + 服務列表
+    // ================================
     (async function () {
         const wrap = document.getElementById("bossServiceList");
-        const API_BASE = "https://localhost:7030";
 
         try {
+            // const API_BASE = "https://localhost:7030";
             const res = await fetch(`${API_BASE}/api/BossInfo/store/@userId`);
             if (!res.ok) throw new Error("服務資料載入失敗");
-
+              
             const data = await res.json();
             servicesData = data;
-
+  
             if (!Array.isArray(data) || data.length === 0) {
                 wrap.innerHTML = `<div class="col-12 text-center text-muted py-5">您尚未上架任何服務。</div>`;
                 return;
             }
 
             // ===== 共用設定（取第一筆，因為你現在是 user-level） =====
-            const first = data[0];
-
-            const methods = first.methods?.length
-                ? first.methods.join("、")
-                : "未設定";
-
-            const areas = first.areas?.length
-                ? first.areas.map(a =>
-                    `${a.cityName ?? ""}${a.districtName ?? ""}${a.locality ? "（" + a.locality + "）" : ""}`
-                  ).join("、")
-                : "未設定";
-
-            const addresses = first.addresses?.length
-                ? first.addresses.map(a =>
-                    `${a.cityName ?? ""}${a.districtName ?? ""}${a.street ?? ""}${a.addressNo ?? ""}`
-                  ).join("、")
-                : "未設定";
-
-            const globalCard = document.getElementById("bossServiceGlobalSettings");
-            document.getElementById("globalMethods").textContent   = methods;
-            document.getElementById("globalAreas").textContent     = areas;
-            document.getElementById("globalAddresses").textContent = addresses;
-            globalCard.classList.remove("d-none");
+            storeInfo = data[0];
+            updateGlobalCard(storeInfo);
 
             // ===== 每個服務項目卡片（不再重複共用資訊） =====
             wrap.innerHTML = data.map(s => {
@@ -121,30 +149,667 @@
             alert("找不到此服務項目");
             return;
         }
+             
+        // 先把舊的 modal 移除，防止 DOM 內有多個同 id
+        const oldModal = document.getElementById("bossServiceEditModal");
+        if (oldModal) {
+            oldModal.remove();
+        }
+
+        // 記住「開啟 modal 的那個元素」（通常是編輯按鈕）
+        const opener = document.activeElement;
 
         const res = await fetch(`/BossServices/Edit/${itemId}`);
         const html = await res.text();
-
+        
         const temp = document.createElement("div");
         temp.innerHTML = html.trim();
         const modalEl = temp.querySelector(".modal");
         document.body.appendChild(modalEl);
 
+         // 關鍵在這裡：用 hide.bs.modal（關閉前）把焦點移出 modal
+        modalEl.addEventListener('hide.bs.modal', () => {
+            const active = document.activeElement;
+            if (active && modalEl.contains(active)) {
+                // 1) 先把在 modal 裡的按鈕 blur 掉
+                active.blur();
+
+                // 2) 再把焦點還給原本的觸發按鈕（比較符合無障礙 UX）
+                if (opener && typeof opener.focus === 'function') {
+                    opener.focus();
+                }
+            }
+        });
+
         const modal = new bootstrap.Modal(modalEl);
-        modal.show();
 
         fillModal(service);
+        modal.show();
     }
 
     // ------------------------------------------------------
     // 填入 Modal 內容（只填 item 自己的東西，方法/範圍/據點是共用）
     // ------------------------------------------------------
     function fillModal(service) {
-        document.querySelector("#bossServiceEditModalLabel").innerText = service.itemName ?? service.itemId;
 
+        currentEditingService = service;
+        const areas = service.areas?.length
+            ? service.areas.map(a =>
+                `${a.cityName ?? ""}${a.districtName ?? ""}${a.locality ? "（" + a.locality + "）" : ""}`
+            ).join("、")
+            : "未設定";
+         
+        const addresses = service.addresses?.length
+            ? service.addresses.map(a =>
+                `${a.cityName ?? ""}${a.districtName ?? ""}${a.street ?? ""}${a.addressNo ?? ""}`
+            ).join("、")
+            : "未設定";
+
+        document.querySelector("#bossServiceEditModalLabel").innerText = service.itemName ?? service.itemId;
         document.querySelector("#minPrice").value = service.minPrice ?? "";
         document.querySelector("#maxPrice").value = service.maxPrice ?? "";
 
-        // 共用設定如果你未來也想在 modal 顯示，可從 servicesData[0] 再塞一次
+        // 共用設定
+        document.querySelector("#serviceAreas").innerText = areas;
+        document.querySelector("#serviceAddresses").innerText = addresses;
     }
+
+    async function saveService() {
+
+        const userId = document.querySelector('#userId').value;
+        const itemId = document.querySelector('#itemId').value;
+
+        const minPrice = parseInt(document.querySelector("#minPrice").value) || 0;
+        const maxPrice = parseInt(document.querySelector("#maxPrice").value) || 0;
+
+        // 組成 DTO
+        const dto = {
+            userId,
+            itemId,
+            minPrice: parseInt(document.getElementById("minPrice").value),
+            maxPrice: parseInt(document.getElementById("maxPrice").value),
+            serviceAreas: currentEditingService.areas ?? []
+        };
+        
+        try {
+             const res = await fetch(`${API_BASE}/api/BossInfo/store/upsert`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(dto)
+            });
+
+            if (!res.ok) {
+                showBootstrapAlert('danger', `儲存失敗（${res.status}）`);
+                return;
+            }
+
+            showBootstrapAlert('success', '儲存成功！');
+            await sleep(1500);   // 等 1.5 秒
+            location.reload();
+
+        } catch (err) {
+            console.error("儲存失敗", err);
+             showBootstrapAlert('danger',"儲存失敗");
+        }
+    }
+
+
+    async function editStore() {
+
+        console.log("[editStore] Editing store-level settings");
+
+        // 先把舊的 modal 移除，防止 DOM 內有多個同 id
+        const oldModal = document.getElementById("bossStoreEditModal");
+        if (oldModal) {
+            oldModal.remove();
+        }
+
+        // 1) 先抓 partial view（__BossServiceFormPartial）
+        const res = await fetch(`/BossServices/EditStore`);
+        const html = await res.text();
+
+        // 2) append modal 到 body（和 editService 完全一樣）
+        const temp = document.createElement("div");
+        temp.innerHTML = html.trim();
+        const modalEl = temp.querySelector(".modal");
+        document.body.appendChild(modalEl);
+
+        // 3) 開啟 bootstrap modal
+        const modal = new bootstrap.Modal(modalEl);
+      
+        // 4) 載入 store API 資料，塞進 modal
+        fillStoreModal(modalEl);
+        modal.show();
+   }
+
+
+   function fillStoreModal(modalEl) {
+
+        // ===== 塞資料到 modal =====
+        // ===== 服務方式 =====
+        const allServiceMethods = [
+            "我可以上門服務",
+            "客戶到我的據點",
+            "可宅配",
+            "線上諮詢"
+        ];
+
+        const methodsContainer = modalEl.querySelector("#storeMethods");
+        methodsContainer.innerHTML = "";
+
+        const selected = storeInfo.methods ?? [];   // store APIs 回傳的資料
+
+        allServiceMethods.forEach(method => {
+            const id = "method_" + method;
+
+            const wrapper = document.createElement("div");
+            wrapper.innerHTML = `
+                <input class="form-check-input" type="checkbox" value="${method}" id="${id}">
+                <label class="form-check-label" for="${id}">
+                    ${method}
+                </label>
+            `;
+
+            if (selected.includes(method)) {
+                wrapper.querySelector("input").checked = true;
+            }
+
+            methodsContainer.appendChild(wrapper);
+        });
+
+
+        // 範圍塞到 #storeAreas
+         const areasContainer = modalEl.querySelector("#storeAreas");
+         areasContainer.innerHTML = "";
+         // 先把 store 裡的 areas 存成全域暫存
+         storeAreasData = Array.isArray(storeInfo?.areas) ? storeInfo.areas.slice() : [];
+         // 畫出上面的清單
+         renderAreaList(areasContainer);
+         // 初始化底下那組「新增」的 select 聯動
+         setupAreaEditor(modalEl, areasContainer);
+
+
+        // 據點塞到 #storeAddresses
+        const addressesContainer = modalEl.querySelector("#storeAddresses");
+        addressesContainer.innerHTML = "";
+        // 先把 store 裡的 address 存成全域暫存
+        storeAddressData = Array.isArray(storeInfo?.addresses) ? storeInfo.addresses.slice() : [];
+        renderAddressList(addressesContainer);
+        setupAddressEditor(modalEl, addressesContainer);
+    }
+
+    function getSelectedMethods(modalEl) {
+        const checked = modalEl.querySelectorAll(
+            "#storeMethods input[type='checkbox']:checked"
+        );
+        return Array.from(checked).map(x => x.value);
+    }
+
+    async function saveStore() {
+        const modalEl = document.getElementById("bossStoreEditModal");
+        if (!modalEl) {
+            alert("找不到 modal！");
+            return;
+        }
+
+        const methods = getSelectedMethods(modalEl);
+        const userId = document.querySelector('#userId').value;
+
+         try {
+
+              // ==========================
+              // 1) 儲存服務方式
+              // ==========================
+              const resMethod = await fetch(`${API_BASE}/api/BossServiceMethod/${userId}`, {
+                 method: "POST",
+                 headers: {
+                     "Content-Type": "application/json"
+                 },
+                 body: JSON.stringify(methods)
+             });
+         
+             if (!resMethod.ok) {
+                 showBootstrapAlert('danger', `儲存失敗（${resMethod.status}）`);
+                 return;
+             }
+
+             // ==========================
+             // 2) 儲存服務區域
+             // ==========================
+             const resArea = await fetch(`${API_BASE}/api/BossInfo/store/upsertServiceAreas/${userId}`, {
+                 method: "POST",
+                 headers: { "Content-Type": "application/json" },
+                 body: JSON.stringify(storeAreasData)
+             });
+
+              // ==========================
+              // 3) 儲存服務據點
+              // ==========================
+              const payload = storeAddressData.map(addr => ({ // 將 addressPostalId 改回 postalId（後端習慣的欄位），其餘欄位照樣傳
+                 ...addr,
+                 postalId: addr.addressPostalId
+              }));
+
+               // 刪掉 addressPostalId
+               payload.forEach(p => delete p.addressPostalId);
+               const resAddress = await fetch(`${API_BASE}/api/BossInfo/store/upsertServiceAddresses/${userId}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload)
+              });
+
+             // ==========================
+             // 4) 全部成功
+             // ==========================
+
+             if (!resArea.ok) {
+                 showBootstrapAlert('danger', `儲存服務區域失敗（${resArea.status}）`);
+                 return;
+             }
+
+             showBootstrapAlert('success', '儲存成功！');
+             // await sleep(1500);   // 等 1.5 秒
+             // location.reload();
+
+         } catch (err) {
+             console.error("儲存失敗", err);
+             showBootstrapAlert('danger',"儲存失敗");
+         }
+    }
+       
+    function renderAreaList(container) {
+        container.innerHTML = "";
+
+        if (!storeAreasData.length) {
+            container.innerHTML = '<div class="text-muted small">尚未設定服務範圍。</div>';
+            return;
+        }
+
+        // 包成 tag 容器
+        const wrapper = document.createElement("div");
+        wrapper.className = "store-area-tags-container";
+
+        storeAreasData.forEach((area, index) => {
+            wrapper.appendChild(createAreaRow(area, index));
+        });
+
+        container.appendChild(wrapper);
+    }
+
+     // ================================
+     // 建立單筆 row（服務方式 / 範圍 / 據點）
+     // ================================
+     function createAreaRow(area, index) {
+
+        const div = document.createElement("span");
+        // div.className = "mb-1 store-area-row";
+        div.className = "badge bg-success rounded-pill me-2";  // 膠囊 tag
+
+        // 組合顯示文字：台北市 中正區 10041 濟南里  （備註）
+        const parts = [];
+        if (area.cityName) parts.push(area.cityName);
+        if (area.districtName) parts.push(area.districtName);
+        if (area.postalCode || area.locality) {
+            parts.push(`${area.postalCode ?? ""} ${area.locality ?? ""}`.trim());
+        }
+
+        let mainText = parts.join(" ");
+        if (area.note) {
+            mainText += `（${area.note}）`;
+        }
+
+        div.innerHTML = `
+            ${mainText || "未設定"}
+            <button type="button"
+                    class="btn-close btn-close-white btn-sm ms-2"
+                    aria-label="刪除">
+            </button>
+        `;
+
+        // 刪除：從陣列移除，重新 render
+        const btnDelete = div.querySelector("button");
+        btnDelete.addEventListener("click", () => {
+            storeAreasData.splice(index, 1);
+            renderAreaList(div.parentElement);
+        });
+
+        return div;
+    }
+
+    function setupAreaEditor(modalEl, listContainer) {
+        const citySelect = modalEl.querySelector("#newAreaCity");
+        const districtSelect = modalEl.querySelector("#newAreaDistrict");
+        const postalSelect = modalEl.querySelector("#newAreaPostal");
+        const noteInput = modalEl.querySelector("#newAreaNote");
+        const btnAdd = modalEl.querySelector("#btnAreaAdd");
+
+        // 填城市
+        (async () => {
+            try {
+                const cities = await loadCities();
+                citySelect.innerHTML = '<option value="">縣市</option>';
+                cities.forEach(c => {
+                    const opt = document.createElement("option");
+                    opt.value = String(c.cityId);
+                    opt.textContent = c.cityName;
+                    citySelect.appendChild(opt);
+                });
+            } catch (e) {
+                console.error("載入城市失敗", e);
+            }
+        })();
+
+        // 城市 change → 行政區
+        citySelect.addEventListener("change", async () => {
+            const cityId = citySelect.value;
+
+            districtSelect.innerHTML = '<option value="">行政區</option>';
+            districtSelect.disabled = true;
+            postalSelect.innerHTML = '<option value="">郵遞區號 / 里</option>';
+            postalSelect.disabled = true;
+
+            if (!cityId) return;
+
+            try {
+                const districts = await loadDistricts(cityId);
+                districts.forEach(d => {
+                    const opt = document.createElement("option");
+                    opt.value = String(d.districtId);
+                    opt.textContent = d.districtName;
+                    districtSelect.appendChild(opt);
+                });
+                districtSelect.disabled = false;
+            } catch (e) {
+                console.error("載入行政區失敗", e);
+            }
+        });
+
+        // 行政區 change → 郵遞區號
+        districtSelect.addEventListener("change", async () => {
+            const districtId = districtSelect.value;
+
+            postalSelect.innerHTML = '<option value="">郵遞區號 / 里</option>';
+            postalSelect.disabled = true;
+
+            if (!districtId) return;
+
+            try {
+                const postals = await loadPostals(districtId);
+                postals.forEach(p => {
+                    const opt = document.createElement("option");
+                    opt.value = String(p.postalId);
+                    opt.textContent = `${p.postalCode} ${p.locality ?? ""}`;
+                    postalSelect.appendChild(opt);
+                });
+                postalSelect.disabled = false;
+            } catch (e) {
+                console.error("載入郵遞區號失敗", e);
+            }
+        });
+
+        // 點「新增」：把目前選擇加入暫存 areas 陣列，再重畫上面的清單
+        btnAdd.addEventListener("click", async () => {
+            const cityId = citySelect.value;
+            const districtId = districtSelect.value;
+            const postalId = postalSelect.value;
+            const note = noteInput.value.trim();
+
+            if (!cityId || !districtId) {
+                alert("請先選擇完整的縣市、行政區與郵遞區號。");
+                return;
+            }
+
+            // 取得顯示名稱
+            const cities = await loadCities();
+            const city = cities.find(c => String(c.cityId) === cityId);
+
+            const districts = await loadDistricts(cityId);
+            const district = districts.find(d => String(d.districtId) === districtId);
+
+            const postals = await loadPostals(districtId);
+            const postal = postals.find(p => String(p.postalId) === postalId);
+
+            storeAreasData.push({
+                cityId: Number(cityId),
+                cityName: city?.cityName,
+                districtId: Number(districtId),
+                districtName: district?.districtName,
+                postalId: Number(postalId),
+                postalCode: postal?.postalCode,
+                locality: postal?.locality,
+                note: note
+            });
+
+            renderAreaList(listContainer);
+
+            // 清空編輯區
+            citySelect.value = "";
+            districtSelect.innerHTML = '<option value="">行政區</option>';
+            districtSelect.disabled = true;
+            postalSelect.innerHTML = '<option value="">郵遞區號 / 里</option>';
+            postalSelect.disabled = true;
+            noteInput.value = "";
+        });
+    }
+
+     // 服務據點：上方 tag 清單（一筆一列）
+     function renderAddressList(container) {
+         container.innerHTML = "";
+
+         if (!storeAddressData.length) {
+             container.innerHTML = '<div class="text-muted small">尚未設定服務據點。</div>';
+             return;
+         }
+
+         storeAddressData.forEach((addr, index) => {
+             const wrapper = document.createElement("div");
+             wrapper.className = "mb-1";
+
+             const pill = document.createElement("span");
+             // 一筆一列，用 d-block + text-start
+             pill.className = "badge bg-success rounded-pill d-block text-start";
+
+             const parts = [];
+             if (addr.cityName) parts.push(addr.cityName);
+             if (addr.districtName) parts.push(addr.districtName);
+             // if (addr.postalCode || addr.locality) {
+             //     parts.push(
+             //         `${addr.postalCode ?? ""}${addr.locality ? " " + addr.locality : ""}`.trim()
+             //     );
+             // }
+             if (addr.street) parts.push(addr.street);
+             if (addr.addressNo) parts.push(addr.addressNo);
+
+             let mainText = parts.join(" ");
+
+             // 聯絡資訊放在後面，用「／」與「 / 」分隔
+             const tail = [];
+             if (addr.contactName) tail.push(addr.contactName);
+             if (addr.phone) tail.push(addr.phone);
+
+             let displayText = mainText || "未設定";
+             if (tail.length) {
+                 displayText += " ／ " + tail.join(" / ");
+             }
+
+             pill.innerHTML = `
+                 ${displayText}
+                 <button type="button"
+                         class="btn-close btn-close-white btn-sm ms-2 float-end"
+                         aria-label="刪除"></button>
+             `;
+
+             const btnDelete = pill.querySelector("button");
+             btnDelete.addEventListener("click", () => {
+                 storeAddressData.splice(index, 1);
+                 renderAddressList(container);
+             });
+
+             wrapper.appendChild(pill);
+             container.appendChild(wrapper);
+         });
+     }
+
+     // 服務據點：下方 editor（縣市 / 行政區 / 里 + street + phone + contactName）
+     function setupAddressEditor(modalEl, listContainer) {
+         const citySelect    = modalEl.querySelector("#newAddressCity");
+         const districtSelect = modalEl.querySelector("#newAddressDistrict");
+         const postalSelect   = modalEl.querySelector("#newAddressPostal");
+         const streetInput    = modalEl.querySelector("#newAddressStreet");
+         const phoneInput     = modalEl.querySelector("#newAddressPhone");
+         const contactInput   = modalEl.querySelector("#newAddressContact");
+         const btnAdd         = modalEl.querySelector("#btnAddAddress");
+
+         // 先載入縣市
+         (async () => {
+             try {
+                 const cities = await loadCities();
+                 citySelect.innerHTML = '<option value="">縣市</option>';
+                 cities.forEach(c => {
+                     const opt = document.createElement("option");
+                     opt.value = String(c.cityId);
+                     opt.textContent = c.cityName;
+                     citySelect.appendChild(opt);
+                 });
+             } catch (e) {
+                 console.error("載入城市失敗", e);
+             }
+         })();
+
+         // 城市 change → 行政區
+         citySelect.addEventListener("change", async () => {
+             const cityId = citySelect.value;
+
+             districtSelect.innerHTML = '<option value="">行政區</option>';
+             districtSelect.disabled = true;
+             postalSelect.innerHTML = '<option value="">郵遞區號 / 里</option>';
+             postalSelect.disabled = true;
+
+             if (!cityId) return;
+
+             try {
+                 const districts = await loadDistricts(cityId);
+                 districts.forEach(d => {
+                     const opt = document.createElement("option");
+                     opt.value = String(d.districtId);
+                     opt.textContent = d.districtName;
+                     districtSelect.appendChild(opt);
+                 });
+                 districtSelect.disabled = false;
+             } catch (e) {
+                 console.error("載入行政區失敗", e);
+             }
+         });
+
+         // 行政區 change → 郵遞區號 / 里
+         districtSelect.addEventListener("change", async () => {
+             const districtId = districtSelect.value;
+
+             postalSelect.innerHTML = '<option value="">郵遞區號 / 里</option>';
+             postalSelect.disabled = true;
+
+             if (!districtId) return;
+
+             try {
+                 const postals = await loadPostals(districtId);
+                 postals.forEach(p => {
+                     const opt = document.createElement("option");
+                     opt.value = String(p.postalId);
+                     opt.textContent = `${p.postalCode} ${p.locality ?? ""}`;
+                     postalSelect.appendChild(opt);
+                 });
+                 postalSelect.disabled = false;
+             } catch (e) {
+                 console.error("載入郵遞區號失敗", e);
+             }
+         });
+
+         // 按「＋新增」
+         btnAdd.addEventListener("click", async () => {
+             const cityId     = citySelect.value;
+             const districtId = districtSelect.value;
+             const postalId   = postalSelect.value;
+             const street     = streetInput.value.trim();
+             const phone      = phoneInput.value.trim();
+             const contact    = contactInput.value.trim();
+
+             if (!cityId || !districtId) {
+                 alert("請先選擇完整的縣市、行政區與郵遞區號。");
+                 return;
+             }
+
+             try {
+                 const cities    = await loadCities();
+                 const city      = cities.find(c => String(c.cityId) === cityId);
+
+                 const districts = await loadDistricts(cityId);
+                 const district  = districts.find(d => String(d.districtId) === districtId);
+
+                 const postals   = await loadPostals(districtId);
+                 const postal    = postals.find(p => String(p.postalId) === postalId);
+
+                 storeAddressData.push({
+                     cityId: Number(cityId),
+                     cityName: city?.cityName,
+                     districtId: Number(districtId),
+                     districtName: district?.districtName,
+                     addressPostalId: Number(postalId),
+                     // postalCode: postal?.postalCode,
+                     // locality: postal?.locality,
+                     street: street,
+                     phone: phone,
+                     contactName: contact
+                 });
+
+                 renderAddressList(listContainer);
+
+                 // 清空 editor
+                 citySelect.value = "";
+                 districtSelect.innerHTML = '<option value="">行政區</option>';
+                 districtSelect.disabled = true;
+                 postalSelect.innerHTML = '<option value="">郵遞區號 / 里</option>';
+                 postalSelect.disabled = true;
+                 streetInput.value = "";
+                 phoneInput.value = "";
+                 contactInput.value = "";
+             } catch (e) {
+                 console.error("新增服務據點失敗", e);
+             }
+         });
+     }
+
+
+     async function loadCities() {
+        if (locationCities) return locationCities;
+         const res = await fetch(`${API_BASE}/api/Location/cities`);
+        if (!res.ok) throw new Error("載入城市列表失敗");
+        const data = await res.json();
+        locationCities = data || [];
+        return locationCities;
+    }
+
+     async function loadDistricts(cityId) {
+        if (!cityId) return [];
+        if (locationDistrictsByCity[cityId]) return locationDistrictsByCity[cityId];
+
+        const res = await fetch(`${API_BASE}/api/Location/districts/${cityId}`);
+        if (!res.ok) throw new Error("載入行政區列表失敗");
+        const data = await res.json();
+        locationDistrictsByCity[cityId] = data || [];
+        return locationDistrictsByCity[cityId];
+    }
+
+     async function loadPostals(districtId) {
+        if (!districtId) return [];
+        if (locationPostalsByDistrict[districtId]) return locationPostalsByDistrict[districtId];
+
+        const res = await fetch(`${API_BASE}/api/Location/postal/${districtId}`);
+        if (!res.ok) throw new Error("載入里列表失敗");
+        const data = await res.json();
+        locationPostalsByDistrict[districtId] = data || [];
+        return locationPostalsByDistrict[districtId];
+    }
+
 </script>

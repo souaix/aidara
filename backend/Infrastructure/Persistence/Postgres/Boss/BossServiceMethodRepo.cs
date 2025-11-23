@@ -3,6 +3,8 @@ using Backend.Application.ViewModels.Services;
 using Dapper;
 using Npgsql;
 
+namespace Backend.Infrastructure.Persistence.Postgres;
+
 public class BossServiceMethodRepo : IBossServiceMethodRepo
 {
     private readonly NpgsqlDataSource _ds;

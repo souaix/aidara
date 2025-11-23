@@ -25,6 +25,8 @@ namespace Backend.Application.ViewModels.Boss
         public string? CityName { get; set; }
         public int DistrictId { get; set; }
         public string? DistrictName { get; set; }
+        public int PostalId { get; set; }
+        public string? PostalCode { get; set; }
         public string? Locality { get; set; }
         public string? AreaNote { get; set; }
 
@@ -34,6 +36,7 @@ namespace Backend.Application.ViewModels.Boss
         public string? AddrDistrictName { get; set; }
         public string? Street { get; set; }
         public string? AddressNo { get; set; }
+        public int AddressPostalId { get; set; }
         public string? Phone { get; set; }
         public string? ContactName { get; set; }
         public decimal? Lat { get; set; }
@@ -63,6 +66,8 @@ namespace Backend.Application.ViewModels.Boss
         public string? CityName { get; set; }
         public int DistrictId { get; set; }
         public string? DistrictName { get; set; }
+        public int PostalId { get; set; }
+        public string? PostalCode { get; set; }
         public string? Locality { get; set; }
         public string? Note { get; set; }
     }
@@ -75,6 +80,7 @@ namespace Backend.Application.ViewModels.Boss
         public string? DistrictName { get; set; }
         public string? Street { get; set; }
         public string? AddressNo { get; set; }
+        public int AddressPostalId { get; set; }
         public string? Phone { get; set; }
         public string? ContactName { get; set; }
         public decimal? Lat { get; set; }
