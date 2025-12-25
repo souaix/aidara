@@ -1,9 +1,10 @@
 ﻿// Backend.Api/Controllers/UserController.cs
-using System.Data;
 using Backend.Application.Ports;
-using Backend.Domain.Entities;
 using Backend.Application.Shared;
+using Backend.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
+using System.Data;
+using System.Security.Claims;
 
 namespace Backend.Api.Controllers
 {
@@ -13,11 +14,13 @@ namespace Backend.Api.Controllers
     {
         private readonly IUnitOfWorkFactory _uowFactory;
         private readonly IUserRepo _userRepo;
+        private readonly IWebHostEnvironment _env;
 
-        public UserController(IUnitOfWorkFactory uowFactory, IUserRepo userRepo)
+        public UserController(IUnitOfWorkFactory uowFactory, IUserRepo userRepo, IWebHostEnvironment env)
         {
             _uowFactory = uowFactory;
             _userRepo = userRepo;
+            _env = env;
         }
 
         /// <summary>
@@ -69,6 +72,29 @@ namespace Backend.Api.Controllers
         }
 
         /// <summary>
+        /// 更新使用者
+        /// </summary>
+        [HttpPost("{userId:guid}/profile")]
+        public async Task<IActionResult> UpdateUser([FromBody] User user, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(user.Email))
+                return BadRequest("Email 不可為空");
+
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
+            try
+            {
+                var update = await _userRepo.UpdateAsync(uow.Connection, uow.Transaction, user, ct);
+                await uow.CommitAsync(ct);
+                return Ok(update);
+            }
+            catch
+            {
+                await uow.RollbackAsync(ct);
+                throw;
+            }
+        }
+
+        /// <summary>
         /// 更新使用者最後登入時間（LastSeenAt）
         /// </summary>
         [HttpPost("{userId:guid}/touch")]
@@ -86,6 +112,67 @@ namespace Backend.Api.Controllers
                 await uow.RollbackAsync(ct);
                 throw;
             }
+        }
+
+        [HttpPost("{userId:guid}/upload-avatar")]
+        public async Task<IActionResult> UploadAvatar(Guid userId, IFormFile avatar,CancellationToken ct)
+        {
+            if (avatar == null || avatar.Length == 0)
+                return BadRequest("No file");
+
+            // ===== 檢查副檔名 =====
+            var ext = Path.GetExtension(avatar.FileName).ToLowerInvariant();
+            var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            if (!allowed.Contains(ext))
+                return BadRequest("Invalid image type");
+
+            // ===== 儲存路徑 =====
+            var backendRoot = _env.ContentRootPath;
+            // backendRoot = .../App/backend/Backend.Api
+
+            var frontendWebRoot = Path.GetFullPath(Path.Combine(
+                backendRoot,
+                "..", "..",            // 回到 App
+                "frontend",
+                "Frontend.Web",
+                "wwwroot",
+                "images",
+                "Boss",
+                "Profile"
+            ));
+
+            Directory.CreateDirectory(frontendWebRoot);
+
+            var fileName = $"{userId}{ext}";
+            var physicalPath = Path.Combine(frontendWebRoot, fileName);
+            var relativePath = $"/images/Boss/Profile/{fileName}";
+
+            // 確保資料夾存在
+            Directory.CreateDirectory(Path.GetDirectoryName(physicalPath)!);
+
+            // ===== 寫入檔案 =====
+            await using (var stream = new FileStream(physicalPath, FileMode.Create))
+            {
+                await avatar.CopyToAsync(stream, ct);
+            }
+
+            // ===== 更新 DB（只更新 avatar_url + updated_at）=====
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
+            
+            try
+            {
+                await _userRepo.UpdateAvatarAsync(uow.Connection, uow.Transaction, userId, relativePath, ct);
+                await uow.CommitAsync(ct);
+                return Ok(new
+                {
+                    avatarUrl = relativePath
+                });
+            }
+            catch
+            {
+                await uow.RollbackAsync(ct);
+                throw;
+            }  
         }
     }
 }

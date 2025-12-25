@@ -57,6 +57,46 @@ public sealed class UserRepo : IUserRepo
             new CommandDefinition(sql, user, tx, cancellationToken: ct));
     }
 
+    public async Task<User> UpdateAsync(IDbConnection conn, IDbTransaction? tx, User user, CancellationToken ct)
+    {
+        const string sql = """
+            UPDATE user_basis
+            SET
+                display_name = @DisplayName,
+                avatar_url  = @AvatarUrl,
+                phone       = @Phone,
+                gender      = @Gender,
+                birthdate   = @Birthdate,
+                city        = @City,
+                district    = @District,
+                street      = @Street,
+                address_no  = @AddressNo,
+                is_active   = @IsActive,
+                updated_at  = @UpdatedAt
+            WHERE user_id = @UserId
+            RETURNING
+                user_id     AS UserId,
+                email,
+                display_name AS DisplayName,
+                boss_name    AS BossName,
+                avatar_url   AS AvatarUrl,
+                phone,
+                gender,
+                birthdate,
+                city,
+                district,
+                street,
+                address_no,
+                is_active    AS IsActive,
+                last_seen_at AS LastSeenAt,
+                created_at   AS CreatedAt,
+                updated_at   AS UpdatedAt;
+            """;
+
+        return await conn.QuerySingleAsync<User>(
+            new CommandDefinition(sql, user, tx, cancellationToken: ct));
+    }
+
     public async Task<User?> GetUserProfileAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, CancellationToken ct)
     {
         const string sql = """
@@ -68,6 +108,10 @@ public sealed class UserRepo : IUserRepo
                    phone,
                    gender,
                    birthdate,
+                   city,
+                   district,
+                   street,
+                   address_no   AS AddressNo,
                    is_active    AS IsActive,
                    last_seen_at AS LastSeenAt,
                    created_at   AS CreatedAt,
@@ -92,5 +136,19 @@ public sealed class UserRepo : IUserRepo
 
         await conn.ExecuteAsync(
             new CommandDefinition(sql, new { userId }, tx, cancellationToken: ct));
+    }
+
+    public async Task UpdateAvatarAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, string relativePath, CancellationToken ct)
+    {
+        Console.WriteLine("WRRRRRRITE!!"+ relativePath);
+        const string sql = """
+            UPDATE user_basis
+               SET avatar_url = @relativePath,
+                   updated_at   = now()
+             WHERE user_id = @userId;
+        """;
+
+        await conn.ExecuteAsync(
+            new CommandDefinition(sql, new { userId = userId, relativePath = relativePath }, tx, cancellationToken: ct));
     }
 }

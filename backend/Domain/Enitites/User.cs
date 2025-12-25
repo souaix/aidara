@@ -10,6 +10,10 @@ public class User
     public string? Phone { get; set; }
     public string? Gender { get; set; }   // 'M','F','O','N'…
     public DateTime? Birthdate { get; set; }
+    public string? City { get; set; }
+    public string? District { get; set; }
+    public string? Street { get; set; }
+    public string? AddressNo { get; set; }
     public bool IsActive { get; set; }
     public DateTime? LastSeenAt { get; set; }
     public DateTime CreatedAt { get; set; }

@@ -12,6 +12,27 @@ namespace Frontend.Web.Controllers
         }
 
         /// <summary>
+        /// 編輯個人設定
+        /// </summary>
+        [HttpGet("/BossServices/EditProfile")]
+        public IActionResult EditProfile()
+        {
+            // 從登入資訊取得 UserId
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized();
+
+            // 建立 ViewModel
+            var vm = new BossProfileEditVm
+            {
+                UserId = userId
+            };
+
+            // 回傳部分視圖（partial）
+            return PartialView("___BossProfileFormPartial", vm);
+        }
+
+        /// <summary>
         /// 編輯共用服務設定
         /// </summary>
         [HttpGet("/BossServices/EditStore")]

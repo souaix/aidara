@@ -1,0 +1,108 @@
+﻿@model Frontend.Web.ViewModels.BossProfileEditVm
+
+<div class="modal fade" id="bossProfileEditModal" tabindex="-1" aria-labelledby="bossProfileEditModalLabel">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="bossProfileEditModalLabel">個人檔案編輯</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+
+                <!-- 顯示名稱 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">顯示名稱</label>
+                    <input type="text"
+                           class="form-control"
+                           id="displayName"
+                           placeholder="請輸入顯示名稱">
+                </div>
+
+                <!-- Phone -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">聯絡電話</label>
+                    <input type="tel"
+                           class="form-control"
+                           id="phone"
+                           placeholder="例如：0912-345-678">
+                </div>
+
+                <!-- ===== 地址（單筆）===== -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold mb-1">地址</label>
+                    <div class="row g-2 align-items-center" id="profileAddressEditor">
+                        <div class="col-md-2">
+                            <select class="form-select form-select-sm" id="profileCity">
+                                <option value="">縣市</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <select class="form-select form-select-sm" id="profileDistrict" disabled>
+                                <option value="">行政區</option>
+                            </select>
+                        </div>
+
+                        @* <div class="col-md-4">
+                            <select class="form-select form-select-sm" id="profilePostal" disabled>
+                                <option value="">郵遞區號 / 里</option>
+                            </select>
+                        </div> *@
+
+                        <div class="col-md-8">
+                            <input type="text"
+                                   class="form-control form-control-sm"
+                                   id="profileStreet"
+                                   placeholder="街道 / 門牌">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 生日 + 性別（同列） -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">生日</label>
+                        <input type="date"
+                               class="form-control"
+                               id="birthdate">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">性別</label>
+                        <select class="form-select" id="gender">
+                            <option value="N">未填</option>
+                            <option value="F">女</option>
+                            <option value="M">男</option>
+                            <option value="O">其他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 是否啟用 -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">帳號狀態</label>
+                    <div class="form-check form-switch mt-1">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               id="isActive">
+                        <label class="form-check-label" for="isActive">
+                            啟用帳號
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                <button class="btn btn-primary" onclick="saveProfile()">儲存</button>
+            </div>
+
+            <input type="hidden" id="userId" value="@Model.UserId" />
+
+        </div>
+    </div>
+</div>

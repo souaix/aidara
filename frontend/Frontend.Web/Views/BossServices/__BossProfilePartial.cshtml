@@ -5,14 +5,31 @@
 
 <div class="card shadow-sm border-0 mb-3">
     <div class="card-body d-flex align-items-center">
-        <div class="me-4 text-center">
-            <img src="/images/company-placeholder.png" alt="Logo" class="rounded-circle" width="90" height="90">
-            <div class="mt-2 small text-success">
-                <a href="#" title="修改頭像"><i class="bi bi-pencil-square"></i> 編輯</a>
-            </div>
+        <div class="avatar-wrapper me-4">
+            <img id="avatarPreview"
+                 src="#"
+                 alt="Avatar"
+                 class="avatar-img">
+
+            <label class="avatar-edit-btn" title="修改頭像">
+                <i class="bi bi-pencil-square"></i>
+                <input type="file"
+                       id="avatarInput"
+                       accept="image/*"
+                       hidden>
+            </label>
         </div>
         <div class="flex-grow-1">
-            <h5 class="fw-bold mb-1">何先森</h5>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-bold mb-1">
+                    <span id="displayName"></span>
+                </h5>
+                <button type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        onclick="editProfile()">
+                    編輯
+                </button>
+            </div>
             <div class="text-muted small mb-1">
                 ⭐ 尚無評價　🛒 0 次雇用
             </div>
@@ -23,9 +40,412 @@
                 <a href="#" class="text-success small">前往設定</a>
             </div>
             <div class="small text-muted">
-                <i class="bi bi-geo-alt"></i> 桃園市中壢區中正路三段二巷一弄21號<br>
-                <i class="bi bi-telephone"></i> 0930948317
+                <i class="bi bi-geo-alt"></i> 
+                <span id="userAddress"></span><br>
+                <i class="bi bi-telephone"></i> 
+                <span id="userPhone"></span>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    let profileInfo = null;
+
+    // ================================
+    // 首次載入：抓 user 資料
+    // ================================
+    (async function () {
+
+        try {
+            const res = await fetch(`${API_BASE}/api/User/@userId`);
+            if (!res.ok) throw new Error("基本資料載入失敗");
+
+            const data = await res.json();
+            profileInfo = data; 
+
+            // ===== 組合地址 =====
+            const address = [
+                data.city,
+                data.district,
+                data.street,
+                data.addressNo
+            ]
+            .filter(x => x && x.trim() !== "") // 避免 null / 空字串
+            .join("");
+
+            // ===== 帶入畫面 =====
+            document.getElementById("displayName").textContent =
+                data.displayName || "尚未設定顯示名稱";
+            document.getElementById("userAddress").textContent =
+                address || "尚未填寫地址";
+            document.getElementById("userPhone").textContent =
+                data.phone || "尚未填寫電話";
+            const avatar = document.getElementById("avatarPreview");
+            if (avatar) {
+                if (data.avatarUrl && data.avatarUrl.trim() !== "") {
+                    const v = data.updatedAt
+                        ? new Date(data.updatedAt).getTime()
+                        : Date.now();
+
+                    avatar.src = `${data.avatarUrl}?v=${v}`;
+                } else {
+                    avatar.src = "/images/company-placeholder.png";
+                }
+            }
+
+        } catch (err) {
+            console.error(err);
+            wrap.innerHTML = `<div class="text-danger text-center py-5">載入基本資料失敗，請稍後再試。</div>`;
+        }
+    })();
+
+    async function editProfile() {
+
+         console.log("[editProfile] Editing profile-level settings");
+
+         // 先把舊的 modal 移除，防止 DOM 內有多個同 id
+         const oldModal = document.getElementById("bossProfileEditModal");
+         if (oldModal) {
+             oldModal.remove();
+         }
+
+         // 1) 先抓 partial view（__BossProfileFormPartial）
+         const res = await fetch(`/BossServices/EditProfile`);
+         const html = await res.text();
+
+         // 2) append modal 到 body
+         const temp = document.createElement("div");
+         temp.innerHTML = html.trim();
+         const modalEl = temp.querySelector(".modal");
+         document.body.appendChild(modalEl);
+
+         // 3) 開啟 bootstrap modal
+         const modal = new bootstrap.Modal(modalEl);
+
+         // 4) 載入 store API 資料，塞進 modal
+         fillProfileModal(modalEl);
+         modal.show();
+    }
+
+    function fillProfileModal(modalEl) {
+
+        if (!modalEl || !profileInfo) {
+            console.warn('[fillProfileModal] modal or profileInfo missing');
+            return;
+        }
+
+        // ===== 顯示名稱 =====
+        const displayNameInput = modalEl.querySelector('#displayName');
+        if (displayNameInput) {
+            displayNameInput.value = profileInfo.displayName ?? '';
+        }
+
+        // ===== 聯絡電話 =====
+        const phoneInput = modalEl.querySelector('#phone');
+        if (phoneInput) {
+            phoneInput.value = profileInfo.phone ?? '';
+        }
+
+        // ===== 生日 =====
+        const birthdateInput = modalEl.querySelector('#birthdate');
+        if (birthdateInput) {
+            // API 若是 ISO string，取 yyyy-MM-dd
+            birthdateInput.value = profileInfo.birthdate
+                ? profileInfo.birthdate.substring(0, 10)
+                : '';
+        }
+
+        // ===== 性別 =====
+        const genderSelect = modalEl.querySelector('#gender');
+        if (genderSelect) {
+            genderSelect.value = profileInfo.gender ?? 'N';
+        }
+
+        // ===== 是否啟用 =====
+        const isActiveSwitch = modalEl.querySelector('#isActive');
+        if (isActiveSwitch) {
+            isActiveSwitch.checked = !!profileInfo.isActive;
+        }
+
+        // ===== 地址文字欄位先塞（街道 / 門牌）=====
+        const streetInput = modalEl.querySelector('#profileStreet');
+        if (streetInput) streetInput.value = profileInfo.street ?? '';
+
+        // ===== 初始化地址三段選單（會依 profileInfo.city / district 反查選取）=====
+        setupProfileAddressEditor(modalEl);
+    }
+
+    async function setupProfileAddressEditor(modalEl) {
+        if (!modalEl) return;
+
+        const editor = modalEl.querySelector('#profileAddressEditor');
+        if (!editor) return;
+
+        // 防止重複綁事件（你現在是動態插 modal，很容易重複綁）
+        if (editor.dataset.bound === '1') {
+            return;
+        }
+        editor.dataset.bound = '1';
+
+        const citySelect = modalEl.querySelector('#profileCity');
+        const districtSelect = modalEl.querySelector('#profileDistrict');
+        // const postalSelect = modalEl.querySelector('#profilePostal');
+        const streetInput = modalEl.querySelector('#profileStreet');
+
+        // 1) 載入 Cities
+        const cities = await loadCities();
+
+        citySelect.innerHTML = '<option value="">縣市</option>';
+        cities.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.cityId;          // 依你 API 回傳欄位（你註解寫 cityId/cityName）
+            opt.textContent = c.cityName;
+            citySelect.appendChild(opt);
+        });
+
+        // 2) 若 profileInfo 有舊值（字串 city/district），嘗試用「名稱」反查出 id
+        const presetCityName = (profileInfo?.city ?? '').trim();
+        const presetDistrictName = (profileInfo?.district ?? '').trim();
+
+        if (presetCityName) {
+            const matchCity = cities.find(x => (x.cityName ?? '').trim() === presetCityName);
+            if (matchCity) {
+                citySelect.value = matchCity.cityId;
+                // 載入 districts 並選取
+                const districts = await loadDistricts(matchCity.cityId);
+
+                districtSelect.disabled = false;
+                districtSelect.innerHTML = '<option value="">行政區</option>';
+                districts.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.districtId;
+                    opt.textContent = d.districtName;
+                    districtSelect.appendChild(opt);
+                });
+
+                if (presetDistrictName) {
+                    const matchDist = districts.find(x => (x.districtName ?? '').trim() === presetDistrictName);
+                    if (matchDist) {
+                        districtSelect.value = matchDist.districtId;
+
+                        // // 載入 postal（僅供選擇/參考）
+                        // const postals = await loadPostals(matchDist.districtId);
+                        // postalSelect.disabled = false;
+                        // postalSelect.innerHTML = '<option value="">郵遞區號 / 里</option>';
+                        // postals.forEach(p => {
+                        //     const opt = document.createElement('option');
+                        //     // 顯示：郵遞區號 + 里（你註解說 postalCode/locality）
+                        //     opt.value = p.postalId;
+                        //     opt.textContent = `${p.postalCode ?? ''} ${p.locality ?? ''}`.trim();
+                        //     postalSelect.appendChild(opt);
+                        // });
+                    }
+                }
+            }
+        }
+
+        // 3) 綁 change：城市 → 行政區
+        citySelect.addEventListener('change', async () => {
+            const cityId = citySelect.value;
+
+            districtSelect.innerHTML = '<option value="">行政區</option>';
+            districtSelect.disabled = true;
+            // postalSelect.innerHTML = '<option value="">郵遞區號 / 里</option>';
+            // postalSelect.disabled = true;
+
+            if (!cityId) {
+                return;
+            }
+
+            const districts = await loadDistricts(cityId);
+            districtSelect.disabled = false;
+            districts.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.districtId;
+                opt.textContent = d.districtName;
+                districtSelect.appendChild(opt);
+            });
+        });
+
+        // // 4) 行政區 → postal
+        // districtSelect.addEventListener('change', async () => {
+        //     const districtId = districtSelect.value;
+
+        //     postalSelect.innerHTML = '<option value="">郵遞區號 / 里</option>';
+        //     postalSelect.disabled = true;
+
+        //     if (!districtId) {
+        //         return;
+        //     }
+
+        //     const postals = await loadPostals(districtId);
+        //     postalSelect.disabled = false;
+        //     postals.forEach(p => {
+        //         const opt = document.createElement('option');
+        //         opt.value = p.postalId;
+        //         opt.textContent = `${p.postalCode ?? ''} ${p.locality ?? ''}`.trim();
+        //         postalSelect.appendChild(opt);
+        //     });
+
+        // });
+    }
+
+    async function saveProfile() {
+        const modalEl = document.getElementById("bossProfileEditModal");
+        if (!modalEl) {
+            alert("找不到 modal！");
+            return;
+        }
+
+        if (!profileInfo) {
+            showBootstrapAlert('danger', "尚未載入使用者資料，請重新開啟編輯視窗");
+            return;
+        }
+
+        // ===== 1) 從 modal 讀出「可編輯欄位」 =====
+        const displayName = (modalEl.querySelector("#displayName")?.value ?? "").trim();
+        const phone = (modalEl.querySelector("#phone")?.value ?? "").trim();
+        const birthdate = (modalEl.querySelector("#birthdate")?.value ?? "").trim(); // yyyy-MM-dd
+        const gender = (modalEl.querySelector("#gender")?.value ?? "N").trim();
+        const isActive = !!modalEl.querySelector("#isActive")?.checked;
+
+        // 單筆地址：city/district 取「文字」存回 DB（ DB 欄位是字串）
+        const cityText = (modalEl.querySelector("#profileCity")?.selectedOptions?.[0]?.textContent ?? "").trim();
+        const districtText = (modalEl.querySelector("#profileDistrict")?.selectedOptions?.[0]?.textContent ?? "").trim();
+        const street = (modalEl.querySelector("#profileStreet")?.value ?? "").trim();
+        const addressNo = (modalEl.querySelector("#profileAddressNo")?.value ?? "").trim();
+
+        // ===== 2) 前端防呆（可依你需求調整）=====
+        if (!displayName) {
+            showBootstrapAlert('danger', "顯示名稱不可空白");
+            return;
+        }
+
+        // gender 只允許 M/F/O/N（避免不小心送空字串）
+        const allowedGender = ["M", "F", "O", "N"];
+        const safeGender = allowedGender.includes(gender) ? gender : "N";
+
+        // ===== 3) 組 payload：用原 profileInfo 當底，再覆蓋編輯欄位 =====
+        // 重點：modal 沒有的欄位（email/avatarUrl/bossName/lastSeenAt/createdAt…）
+        // 一律沿用 profileInfo，避免被覆蓋成 null。
+        const payload = {
+            userId: profileInfo.userId,
+            email: profileInfo.email,                 // 不在編輯頁 -> 沿用
+            bossName: profileInfo.bossName ?? "",     // 不在編輯頁 -> 沿用
+            avatarUrl: profileInfo.avatarUrl ?? null, // 不在編輯頁 -> 沿用
+
+            // 可編輯欄位 -> 覆蓋
+            displayName: displayName,
+            phone: phone || null,
+            gender: safeGender,
+            birthdate: birthdate || null,
+
+            city: cityText || null,
+            district: districtText || null,
+            street: street || null,
+            addressNo: addressNo || null,
+
+            isActive: isActive,
+
+            // 時間欄位：createdAt/lastSeenAt 沿用；updatedAt 用現在
+            lastSeenAt: profileInfo.lastSeenAt ?? null,
+            createdAt: profileInfo.createdAt,
+            updatedAt: new Date().toISOString()
+        };
+
+        try {
+            const res = await fetch(`${API_BASE}/api/User/${userId}/profile`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                showBootstrapAlert('danger', `儲存失敗（${res.status}）`);
+                return;
+            }
+
+            // 後端若回傳更新後物件，建議更新 profileInfo（避免時間欄位不同步）
+            // 若後端沒回 body，也不會壞（用 try/catch 保護）
+            try {
+                const saved = await res.json();
+                profileInfo = saved || payload;
+            } catch (_) {
+                // 沒回 JSON 就用我們的 payload 當新狀態
+                profileInfo = payload;
+            }
+
+            showBootstrapAlert('success', '儲存成功！');
+
+            // ===== 4) 更新外面卡片顯示（可選，但很實用）=====
+            const addressMerged = [payload.city, payload.district, payload.street, payload.addressNo]
+                .filter(x => x && x.trim())
+                .join("");
+            const elName = document.getElementById("displayName");
+            if (elName) elName.textContent = payload.displayName;
+            const elAddr = document.getElementById("userAddress");
+            if (elAddr) elAddr.textContent = addressMerged || "尚未填寫地址";
+            const elPhone = document.getElementById("userPhone");
+            if (elPhone) elPhone.textContent = payload.phone || "尚未填寫電話";
+
+            // ===== 5) 關閉 modal =====
+            const bsModal = bootstrap.Modal.getInstance(modalEl);
+            if (bsModal) bsModal.hide();
+
+        } catch (err) {
+            console.error("儲存失敗", err);
+            showBootstrapAlert('danger', "儲存失敗");
+        }
+    }
+
+    document.getElementById('avatarInput').addEventListener('change', async function () {
+        const file = this.files[0];
+        if (!file) return;
+
+        // ===== 基本檢查 =====
+        if (!file.type.startsWith('image/')) {
+            showBootstrapAlert('danger', '請選擇圖片檔案');
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+            showBootstrapAlert('danger', '圖片大小不可超過 2MB');
+            return;
+        }
+
+        // ===== 前端即時預覽 =====
+        const preview = document.getElementById('avatarPreview');
+        preview.src = URL.createObjectURL(file);
+
+        // ===== 上傳 =====
+        const formData = new FormData();
+        formData.append('avatar', file);
+
+        try {
+            const res = await fetch(`${API_BASE}/api/User/${userId}/upload-avatar`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) {
+                showBootstrapAlert('danger', `上傳失敗（${res.status}）`);
+                return;
+            }
+
+            const result = await res.json();
+
+            // 後端回新的 avatarUrl
+            if (result.avatarUrl) {
+                preview.src = result.avatarUrl + '?t=' + Date.now(); // 防 cache
+            }
+
+            showBootstrapAlert('success', '頭像更新成功');
+
+        } catch (err) {
+            console.error(err);
+            showBootstrapAlert('danger', '頭像上傳失敗');
+        }
+    });
+
+ </script>

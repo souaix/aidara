@@ -174,3 +174,57 @@ body {
 }
 
 
+/* 編輯頭像 */
+/* 外層一定要是 relative */
+.avatar-wrapper {
+    position: relative;
+    width: 100px;
+    height: 100px;
+}
+
+/* 頭像 */
+.avatar-img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #dee2e6;
+}
+
+/* 右下角鉛筆 */
+.avatar-edit-btn {
+    position: absolute;
+    right: 0px;
+    bottom: 0px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 50%;
+    background-color: #fff;
+    border: 1px solid #0d6efd;
+    color: #0d6efd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+    /* hover 行為，跟 Bootstrap 按鈕一致 */
+    .avatar-edit-btn:hover {
+        background-color: #0d6efd;
+        color: #fff;
+    }
+
+    /* icon 大小 */
+    .avatar-edit-btn i {
+        font-size: 12px;
+    }
+
+.avatar-edit-btn {
+    opacity: 0;
+    transition: opacity .15s ease;
+}
+
+.avatar-wrapper:hover .avatar-edit-btn {
+    opacity: 1;
+}
