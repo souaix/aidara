@@ -108,7 +108,7 @@
           function initQuestionnaire(){
             let categories=[], selectedCat=null, selectedSubcat=null, selectedItemId=null;
 
-            fetch(`${API}/api/BossServices/categories`)
+            fetch(`${API_BASE}/api/ServicesItem/categories`)
               .then(r => r.json())
               .then(cats => { categories = cats || []; renderCats(); })
               .catch(() => document.getElementById('catList').innerHTML = '<div class="text-danger px-2">載入失敗</div>');
@@ -158,7 +158,7 @@
               if (!items.length) { list.innerHTML = '<div class="text-muted px-2">此中分類尚無項目</div>'; return; }
               list.innerHTML = items.map(i => `
                 <label class="list-group-item d-flex align-items-center">
-                  <input class="form-check-input me-2" type="radio" name="serviceItem" value="${i.itemId}">
+                  <input class="form-check-input me-2" type="radio" name="serviceItem" value="${i.itemUuid}">
                   <span>${escapeHtml(i.name)}</span>
                 </label>
               `).join('');
@@ -196,8 +196,8 @@
                 priceMax,
                 methods
               };
-
-              fetch(`${API}/api/CustomerServiceQuestionnaire/${USERID}`, {
+       
+              fetch(`${API_BASE}/api/CustomerServiceQuestionnaire/${USERID}`, {
                 method: 'POST',
                 headers: { 'Content-Type':'application/json' },
                 body: JSON.stringify(dto)

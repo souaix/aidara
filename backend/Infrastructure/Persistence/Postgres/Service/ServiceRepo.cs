@@ -24,7 +24,8 @@ public sealed class ServiceRepo : IServiceRepo
                 item_name,
                 category_sort,
                 subcategory_sort,
-                item_sort
+                item_sort,
+                item_uuid
             FROM vw_service_hierarchy(@lang)
             ORDER BY category_sort, subcategory_sort, item_sort;
         """;
@@ -68,6 +69,7 @@ public sealed class ServiceRepo : IServiceRepo
                 {
                     subVm.Items.Add(new ServiceItemVm
                     {
+                        ItemUuid = row.item_uuid,
                         ItemId = row.item_id,
                         Name = row.item_name ?? ""
                     });

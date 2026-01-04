@@ -11,7 +11,7 @@ public class CustomerServiceQuestionnaireController : ControllerBase
         _svc = svc;
     }
 
-    [HttpPost]
+    [HttpPost("{userId:guid}")]
     public async Task<IActionResult> Submit(Guid userId, [FromBody] CustomerServiceQuestionnaireDto dto, CancellationToken ct)
     {
         await _svc.SubmitAsync(userId, dto, ct);

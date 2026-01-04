@@ -10,29 +10,52 @@ public sealed class CustomerServiceQuestionnaireRepo : ICustomerServiceQuestionn
 {
     public async Task SubmitAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, CustomerServiceQuestionnaireDto dto, CancellationToken ct)
     {
-        var requestId = Guid.NewGuid();
+        //var requestId = Guid.NewGuid();
+
+        //const string insertRequestSql = """
+        //    INSERT INTO customer_service_request
+        //        (request_id, user_id, item_id, price_min, price_max, created_at)
+        //    VALUES
+        //        (@requestId, @userId, @itemId, @priceMin, @priceMax, now())
+        //    ON CONFLICT (user_id) DO UPDATE
+        //    SET item_id   = EXCLUDED.item_id,
+        //        price_min = EXCLUDED.price_min,
+        //        price_max = EXCLUDED.price_max,
+        //        updated_at= now();
+        //""";
 
         const string insertRequestSql = """
             INSERT INTO customer_service_request
-                (request_id, user_id, item_id, price_min, price_max, created_at)
+                (user_id, item_id, price_min, price_max, created_at)
             VALUES
-                (@requestId, @userId, @itemId, @priceMin, @priceMax, now())
+                (@userId, @itemId, @priceMin, @priceMax, now())
             ON CONFLICT (user_id) DO UPDATE
             SET item_id   = EXCLUDED.item_id,
                 price_min = EXCLUDED.price_min,
                 price_max = EXCLUDED.price_max,
-                updated_at= now();
+                updated_at= now()
+            RETURNING request_id;
         """;
 
-        await conn.ExecuteAsync(
+        //await conn.ExecuteAsync(
+        //    new CommandDefinition(insertRequestSql, new
+        //    {
+        //        //requestId,
+        //        userId,
+        //        itemId = dto.ItemId,
+        //        priceMin = dto.PriceMin,
+        //        priceMax = dto.PriceMax
+        //    }, tx, cancellationToken: ct));
+
+        var requestId = await conn.QuerySingleAsync<Guid>(
             new CommandDefinition(insertRequestSql, new
             {
-                requestId,
                 userId,
-                itemId = dto.ItemId,
+                itemId = dto.ItemId, 
                 priceMin = dto.PriceMin,
                 priceMax = dto.PriceMax
-            }, tx, cancellationToken: ct));
+            }, tx, cancellationToken: ct)
+        );
 
         // 先刪除舊的服務方式
         const string deleteMethodsSql = "DELETE FROM customer_service_method WHERE request_id = @requestId;";

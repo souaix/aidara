@@ -22,6 +22,7 @@ public class ServiceSubcategoryVm
 
 public class ServiceItemVm
 {
+    public Guid ItemUuid { get; set; }
     public string ItemId { get; set; } = "";
     public string Name { get; set; } = "";
 }
