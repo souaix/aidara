@@ -29,6 +29,8 @@ public interface IBossInfoRepo
 
     // ✅ 單一服務新增或更新 (user_id + item_id 為單位)
     Task UpsertItemAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, ItemPriceRangeDto item, CancellationToken ct);
+    // ✅ 單一服務刪除 (user_id + item_id 為單位)
+    Task DeleteItemAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, string itemId, CancellationToken ct);
 
     // ✅ 指定 item 的範圍更新
     Task ReplaceAreasForItemAsync(IDbConnection conn, IDbTransaction? tx, Guid userId, string itemId, List<ServiceAreaDto> areas, CancellationToken ct);

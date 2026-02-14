@@ -24,6 +24,15 @@ public class BossInfoQuestionnaireDto
     public List<ServiceAddressDto> ServiceAddresses { get; set; } = new();
 }
 
+/// <summary>
+/// 刪除服務項目
+/// </summary>
+public class DeleteServiceItemDto
+{
+    public Guid UserId { get; set; }
+    public string ItemId { get; set; }
+}
+
 /// <summary>服務項目的價格設定</summary>
 public class ItemPriceRangeDto
 {
@@ -35,6 +44,7 @@ public class ItemPriceRangeDto
 
     /// <summary>最高價格</summary>
     public int MaxPrice { get; set; }
+    public bool IsActive { get; set; } = true;
 }
 
 /// <summary>可服務的行政區域</summary>

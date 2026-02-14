@@ -101,6 +101,7 @@ public sealed class BossStoreRepo : IBossStoreRepo
             i.min_price         AS MinPrice,
             i.max_price         AS MaxPrice,
             i.created_at        AS CreatedAt,
+            i.is_active         AS IsActive,
 
             -- 服務分類
             vh.category_name    AS CategoryName,
@@ -165,6 +166,7 @@ public sealed class BossStoreRepo : IBossStoreRepo
                     ItemName = r.ItemName,
                     MinPrice = r.MinPrice,
                     MaxPrice = r.MaxPrice,
+                    IsActive = r.IsActive,
                     CreatedAt = r.CreatedAt,
                     Methods = new List<string>(),
                     Areas = new List<BossServiceAreaVm>(),

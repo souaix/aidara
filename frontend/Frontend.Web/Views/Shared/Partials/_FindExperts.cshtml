@@ -1,19 +1,20 @@
 ﻿<section class="py-4">
     <div class="container">
         <div class="d-flex align-items-center mb-3">
-            <img src="~/images/icon-expert.svg" alt="" style="width:40px;height:40px" class="me-2">
+            @* <img src="~/images/icon-expert.svg" alt="" style="width:40px;height:40px" class="me-2"> *@
+            <i class="bi bi-house-door" style="font-size:2.5rem; margin-right:10px;"></i>
             <div>
                 <h2 class="h3 fw-bold mb-0">找專家</h2>
                 <div class="text-muted small">快速比較專家，立即洽談服務細節</div>
             </div>
-            <div class="ms-auto">
+            @* <div class="ms-auto">
                 <a class="text-decoration-none" asp-controller="Browse" asp-action="Index">更多服務 &gt;</a>
-            </div>
+            </div> *@
         </div>
 
         <div class="row">
             <!-- 左側分類清單 (桌機顯示) -->
-            <aside class="col-12 col-md-3 mb-3 mb-md-0">
+            @* <aside class="col-12 col-md-3 mb-3 mb-md-0">
                 <ul class="list-unstyled find-list d-none d-md-block" id="find-cat-list">
                     <li><a class="find-link active" href="#" data-cat="interior">室內裝潢</a></li>
                     <li><a class="find-link" href="#" data-cat="cleaning">清潔服務</a></li>
@@ -41,19 +42,20 @@
                     <a class="find-link flex-shrink-0" href="#" data-cat="writing">編輯寫作</a>
                 </div>
 
-            </aside>
+            </aside> *@
 
             <!-- 右側圖磚容器 -->
-            <div class="col-12 col-md-9">
+            <div class="col-24 col-md-21">
                 <div id="tiles-container">
-                    @await Html.PartialAsync(
+                    <div id="tiles-container"></div>
+                    @* @await Html.PartialAsync(
                     "~/Views/Shared/Partials/_CategoryTiles.cshtml",
                                         new Frontend.Web.ViewModels.CategoryTilesVm(
-                                        "interior",
-                                        Enumerable.Range(1, 8).Select(i => $"~/images/experts/interior/{i:D2}.jpg"),
-                                        Enumerable.Range(1, 8).Select(i => Guid.NewGuid())
-                                        )
-                                        )
+                                            "interior",
+                                            Enumerable.Range(1, 8).Select(i => $"~/images/experts/interior/{i:D2}.jpg"),
+                                            Enumerable.Range(1, 8).Select(i => Guid.NewGuid())
+                                            )
+                                        ) *@
                 </div>
             </div>
         </div>
@@ -80,8 +82,64 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", () => {
-        const links = document.querySelectorAll(".find-link");
 
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const container = document.getElementById("tiles-container");
+        container.innerHTML = `
+            <div class="d-flex justify-content-center align-items-center" style="height:300px;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+        // 1) 抓分類資料 → 展平成 items 清單（含 id + name）
+        fetch(`${API_BASE}/api/ServicesItem/categories`)
+            .then(r => r.json())
+            .then(cats => {
+                console.log("Raw cats =", cats);
+                const categories = cats || [];
+                console.log("categories length =", categories.length);
+                const allItems = categories.flatMap(c =>
+                    (c.subcategories || []).flatMap(s => s.items || [])
+                );
+                console.log("allItems =", allItems);
+                console.log("allItems length =", allItems.length);
+
+                if (allItems.length > 0) {
+                    console.log("first item =", allItems[0]);
+                }
+
+                container.innerHTML = `
+                    <div class="row g-3">
+                        ${allItems.map(item => `
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <a class="card card-tile text-white text-decoration-none service-link"
+                                   href="javascript:void(0);"
+                                   data-item-id="${item.id || item.itemId}"
+                                   data-category="interior">
+
+                                    <div class="ratio ratio-16x9">
+                                        <img src="/images/experts/Photo/${item.id || item.itemId}.png"
+                                             class="object-fit-cover rounded"
+                                             alt="${item.name}" />
+                                    </div>
+
+                                    <div class="tile-caption">
+                                        <span>${item.name}</span>
+                                    </div>
+
+                                </a>
+                            </div>
+                        `).join("")}
+                    </div>
+                `;
+            });
+
+        // 3) 原本的維持不動
+        const links = document.querySelectorAll(".find-link");
         links.forEach(link => {
             link.addEventListener("click", async (e) => {
                 e.preventDefault();

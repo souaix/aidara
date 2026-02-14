@@ -38,9 +38,92 @@
     <div id="bossServiceList" class="row g-3">
         <div class="text-center text-muted py-5">載入中...</div>
     </div>
+
+    <!-- 新增服務項目 -->
+    <div class="modal fade" id="addServiceModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">新增服務</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <!-- Step 1 -->
+                    <div id="addSvcStep1">
+                        <h4 class="mb-3">Step 1：選擇服務項目</h4>
+
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6 col-lg-5">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <div class="text-muted small">請選擇你要上架的服務</div>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            id="addSvcReloadItems">
+                                        重新載入
+                                    </button>
+                                </div>
+
+                                <div id="addSvcItemList" class="list-group" style="max-height: 55vh; overflow:auto;">
+                                    <div class="text-muted px-2 py-2">載入中…</div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-6 col-lg-7">
+                                <div class="border rounded p-3 h-100 bg-light">
+                                    <h6 class="fw-bold mb-2">提示</h6>
+                                    <ul class="mb-0 small text-muted">
+                                        <li>此流程只需要選擇服務項目與價格區間。</li>
+                                        <li>服務方式 / 服務範圍 / 服務據點為「共用設定」，請在上方「我的服務設定（共用）」編輯。</li>
+                                        <li>選好服務項目後才能進入下一步。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 text-end">
+                            <button class="btn btn-primary" id="addSvcToStep2" disabled>下一步</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div id="addSvcStep2" class="d-none">
+                        <h4 class="mb-3">Step 2：設定價格區間</h4>
+
+                        <div class="row g-2">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small text-muted mb-1">下限（可空白，預設 0）</label>
+                                <input type="number" class="form-control" id="addSvcPriceMin" placeholder="Min Price">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small text-muted mb-1">上限（可空白，預設 0）</label>
+                                <input type="number" class="form-control" id="addSvcPriceMax" placeholder="Max Price">
+                            </div>
+                        </div>
+
+                        <div class="mt-3 d-flex justify-content-between">
+                            <button class="btn btn-outline-secondary" id="addSvcBack1">上一步</button>
+                            <button class="btn btn-success" id="addSvcSubmit">
+                                <i class="bi bi-check2-circle me-1"></i>送出新增
+                            </button>
+                        </div>
+
+                        <div class="mt-3 small text-muted">
+                            ※ 若你要調整服務方式 / 服務範圍 / 服務據點，請到頁面上方「我的服務設定（共用）」去設定。
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
+
     let servicesData = [];
     let storeInfo = null; // 共用設定（服務方式 / 範圍 / 據點）
     let storeAreasData = [];   // 例如 [{ cityId, cityName, districtId, districtName, postalId, postalCode, locality, note }]
@@ -105,24 +188,50 @@
             updateGlobalCard(storeInfo);
 
             // ===== 每個服務項目卡片（不再重複共用資訊） =====
-            wrap.innerHTML = data.map(s => {
+               wrap.innerHTML = data.map(s => {
                 return `
                     <div class="col-12 col-md-6 col-lg-4">
                         <div class="card shadow-sm h-100 border-0">
-                            <div class="card-body">
-                                <h5 class="card-title fw-bold">${s.itemName ?? s.itemId}</h5>
+                            <div class="card-body position-relative">
+
+                                <button type="button"
+                                        class="btn-close position-absolute top-0 end-0 m-2 text-danger"
+                                        aria-label="Delete"
+                                        onclick="confirmDeleteService('${s.itemId}')">
+                                </button>
+
+                                <h5 class="card-title fw-bold">
+                                    ${s.itemName ?? s.itemId}
+                                </h5>
+
                                 <p class="text-muted mb-1">
                                     ${(s.categoryName ?? "")} / ${(s.subcategoryName ?? "")}
                                 </p>
+
                                 <p class="mb-2 small">
                                     價格區間：${s.minPrice ?? 0} ~ ${s.maxPrice ?? 0}
                                 </p>
+
                                 <p class="mb-3 small text-muted">
                                     此服務使用共用設定的「服務方式 / 範圍 / 據點」
                                 </p>
+
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="badge bg-success">啟用中</span>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="editService('${s.itemId}')">
+
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               id="active_${s.itemId}"
+                                               ${s.isActive ? 'checked' : ''}
+                                               onchange="updateServiceActive('${s.itemId}', ${s.minPrice ?? 0}, ${s.maxPrice ?? 0}, this.checked)">
+                                        <label class="form-check-label"
+                                               for="active_${s.itemId}">
+                                            啟用服務
+                                        </label>
+                                    </div>
+
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            onclick="editService('${s.itemId}')">
                                         編輯
                                     </button>
                                 </div>
@@ -131,6 +240,29 @@
                     </div>
                 `;
             }).join("");
+
+            // ===== 加入「新增服務」卡片 =====
+            wrap.innerHTML += `
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card shadow-sm h-100 border-0 add-service-card"
+                         style="cursor:pointer;"
+                         onclick="openRequestModal()">
+
+                        <div class="card-body d-flex flex-column justify-content-center align-items-center text-center text-primary">
+
+                            <i class="bi bi-plus-square mb-3" style="font-size:1.5rem;"></i>
+
+                            <h5 class="fw-bold">新增服務</h5>
+
+                            <p class="small mb-0">
+                                點擊建立新的服務項目
+                            </p>
+
+                        </div>
+
+                    </div>
+                </div>
+            `;
 
         } catch (err) {
             console.error(err);
@@ -255,6 +387,80 @@
         }
     }
 
+    async function updateServiceActive(itemId, minPrice, maxPrice, isActive) {
+
+         // 組成 DTO
+         const dto = {
+             userId: '@userId',
+             itemId: itemId,
+             minPrice: minPrice,
+             maxPrice: maxPrice,
+             isActive: isActive
+         };
+
+         try {
+              const res = await fetch(`${API_BASE}/api/BossInfo/store/upsertServierItem`, {
+                 method: "POST",
+                 headers: {
+                     "Content-Type": "application/json"
+                 },
+                 body: JSON.stringify(dto)
+             });
+
+             if (!res.ok) {
+                 showBootstrapAlert('danger', `儲存失敗（${res.status}）`);
+                 return;
+             }
+
+             showBootstrapAlert('success', '儲存成功！');
+             // await sleep(1500);   // 等 1.5 秒
+             // location.reload();
+
+         } catch (err) {
+             console.error("儲存失敗", err);
+              showBootstrapAlert('danger',"儲存失敗");
+         }
+    }
+
+    async function deleteServiceItem(itemId) {
+        // 組成 DTO
+        const dto = {
+            userId: '@userId',
+            itemId: itemId
+        };
+        
+        try {
+             const res = await fetch(`${API_BASE}/api/BossInfo/store/deleteServierItem`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(dto)
+            });
+
+            if (!res.ok) {
+                showBootstrapAlert('danger', `刪除失敗（${res.status}）`);
+                return;
+            }
+
+            showBootstrapAlert('success', '刪除成功！');
+            await sleep(1500);   // 等 1.5 秒
+            location.reload();
+
+        } catch (err) {
+            console.error("刪除失敗", err);
+             showBootstrapAlert('danger',"刪除失敗");
+        }
+    }
+
+   function confirmDeleteService(itemId) {
+
+        if (!confirm("確定要刪除此服務項目嗎？此動作無法復原。")) {
+            return;
+        }
+
+        deleteServiceItem(itemId);
+    }
 
     async function editStore() {
 
@@ -810,6 +1016,209 @@
         const data = await res.json();
         locationPostalsByDistrict[districtId] = data || [];
         return locationPostalsByDistrict[districtId];
+    }
+
+    // =========================
+    // Add Service Wizard (Step1 + Step2)
+    // 觸發：openRequestModal()
+    // 依賴：API_BASE、storeInfo（共用設定）、Bootstrap 5
+    // =========================
+
+    let addSvcInitialized = false;
+    let addSvcAllItems = [];
+    let addSvcSelectedItemId = null;
+
+    function openRequestModal() {
+        const modalEl = document.getElementById("addServiceModal");
+        if (!modalEl) {
+            alert("找不到新增服務視窗（addServiceModal）");
+            return;
+        }
+
+        resetAddServiceWizard();
+
+        if (!addSvcInitialized) {
+            initAddServiceWizard();
+            addSvcInitialized = true;
+        } else {
+            // 已初始化過：如果 items 已經載過，就直接畫回來，不要停在「載入中」
+            if (Array.isArray(addSvcAllItems) && addSvcAllItems.length > 0) {
+                renderAddServiceItems();
+            } else {
+                // 萬一之前載入失敗或還沒載到，就補載入一次
+                loadAddServiceItems(false);
+            }
+        }
+
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
+    function resetAddServiceWizard() {
+        toggle(document.getElementById("addSvcStep1"), true);
+        toggle(document.getElementById("addSvcStep2"), false);
+
+        addSvcSelectedItemId = null;
+
+        const btnNext = document.getElementById("addSvcToStep2");
+        if (btnNext) btnNext.disabled = true;
+
+        const list = document.getElementById("addSvcItemList");
+        if (list) list.innerHTML = '<div class="text-muted px-2 py-2">載入中…</div>';
+
+        const pm = document.getElementById("addSvcPriceMin");
+        const px = document.getElementById("addSvcPriceMax");
+        if (pm) pm.value = "";
+        if (px) px.value = "";
+    }
+
+    function initAddServiceWizard() {
+        // 重新載入按鈕
+        const btnReload = document.getElementById("addSvcReloadItems");
+        if (btnReload) {
+            btnReload.addEventListener("click", () => {
+                loadAddServiceItems(true);
+            });
+        }
+
+        // 先載入一次 items
+        loadAddServiceItems(false);
+
+        // step 切換
+        const s1 = document.getElementById("addSvcStep1");
+        const s2 = document.getElementById("addSvcStep2");
+
+        document.getElementById("addSvcToStep2").onclick = () => {
+            toggle(s1, false);
+            toggle(s2, true);
+        };
+
+        document.getElementById("addSvcBack1").onclick = () => {
+            toggle(s2, false);
+            toggle(s1, true);
+        };
+
+        // submit
+        document.getElementById("addSvcSubmit").onclick = submitAddService;
+    }
+
+    function loadAddServiceItems(forceReload) {
+        // forceReload 目前只是用來表達意圖；你若未來要加 cache，可在此判斷
+        const list = document.getElementById("addSvcItemList");
+        if (list) list.innerHTML = '<div class="text-muted px-2 py-2">載入中…</div>';
+
+        fetch(`${API_BASE}/api/ServicesItem/categories`)
+            .then(r => r.json())
+            .then(cats => {
+                const categories = cats || [];
+                addSvcAllItems = categories.flatMap(c =>
+                    (c.subcategories || []).flatMap(s => s.items || [])
+                );
+                renderAddServiceItems();
+            })
+            .catch(() => {
+                if (list) list.innerHTML = '<div class="text-danger px-2 py-2">載入失敗</div>';
+            });
+    }
+
+    function renderAddServiceItems() {
+        const list = document.getElementById("addSvcItemList");
+        if (!list) return;
+
+        if (!addSvcAllItems.length) {
+            list.innerHTML = '<div class="text-muted px-2 py-2">目前尚無項目</div>';
+            return;
+        }
+
+        list.innerHTML = addSvcAllItems.map(i => `
+            <label class="list-group-item d-flex align-items-center">
+                <input class="form-check-input me-2"
+                    type="radio"
+                    name="addServiceItem"
+                    value="${i.itemId}">
+                <span>${escapeHtml(i.name)}</span>
+            </label>
+        `).join("");
+
+        list.querySelectorAll('input[name="addServiceItem"]').forEach(r => {
+            r.onchange = () => {
+                addSvcSelectedItemId = r.value;
+                document.getElementById("addSvcToStep2").disabled = !addSvcSelectedItemId;
+            };
+        });
+    }
+
+    async function submitAddService() {
+        if (!addSvcSelectedItemId) {
+            alert("請先選擇服務項目");
+            return;
+        }
+
+        const minPrice = numOrZero(document.getElementById("addSvcPriceMin").value);
+        const maxPrice = numOrZero(document.getElementById("addSvcPriceMax").value);
+
+        if (minPrice && maxPrice && minPrice > maxPrice) {
+            alert("下限不可大於上限");
+            return;
+        }
+
+        // 共用設定的服務範圍（你目前設計是 service 使用共用）
+        const serviceAreas = (storeInfo && Array.isArray(storeInfo.areas)) ? storeInfo.areas : [];
+
+        const dto = {
+            userId: '@userId',
+            itemId: addSvcSelectedItemId,
+            minPrice: minPrice,
+            maxPrice: maxPrice,
+            isActive: true,
+            serviceAreas: serviceAreas
+        };
+
+        try {
+            // 目前更新 service active 用的 API 是 upsertServierItem
+            // 新增 service 也建議走同一支（upsert）
+            const res = await fetch(`${API_BASE}/api/BossInfo/store/upsertServierItem`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(dto)
+            });
+
+            if (!res.ok) {
+                const t = await res.text();
+                showBootstrapAlert('danger', '新增服務失敗\n' + t);
+                return;
+            }
+
+            showBootstrapAlert('success', '新增服務成功！');
+
+            const modalEl = document.getElementById("addServiceModal");
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal?.hide();
+
+            location.reload();
+
+        } catch (err) {
+            console.error(err);
+            showBootstrapAlert('danger', '新增服務失敗：' + err);
+        }
+    }
+
+    // helpers
+    function toggle(el, show) {
+        if (!el) return;
+        el.classList.toggle("d-none", !show);
+    }
+
+    function numOrZero(v) {
+        if (v === "" || v == null) return 0;
+        const n = parseInt(v, 10);
+        return Number.isNaN(n) ? 0 : n;
+    }
+
+    function escapeHtml(s) {
+        return (s ?? "").replace(/[&<>"']/g, m => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+        }[m]));
     }
 
 </script>

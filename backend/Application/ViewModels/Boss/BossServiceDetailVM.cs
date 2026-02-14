@@ -14,6 +14,7 @@ namespace Backend.Application.ViewModels.Boss
         public int MinPrice { get; set; }
         public int MaxPrice { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsActive { get; set; } = true;
 
         public string? CategoryName { get; set; }
         public string? SubcategoryName { get; set; }
@@ -54,6 +55,7 @@ namespace Backend.Application.ViewModels.Boss
         public int MinPrice { get; set; }
         public int MaxPrice { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsActive { get; set; } = true;
 
         public List<string> Methods { get; set; } = new();
         public List<BossServiceAreaVm> Areas { get; set; } = new();

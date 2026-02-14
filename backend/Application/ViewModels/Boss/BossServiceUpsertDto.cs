@@ -13,6 +13,7 @@ public class BossServiceUpsertDto
     public string ItemId { get; set; } = string.Empty;
     public int MinPrice { get; set; }
     public int MaxPrice { get; set; }
+    public bool IsActive { get; set; } = true;
 
     public List<ServiceAreaDto> ServiceAreas { get; set; } = new();
 }

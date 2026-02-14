@@ -148,5 +148,39 @@ namespace Backend.Api.Controllers
 
         }
 
+        [HttpPost("store/upsertServierItem")]
+        public async Task<IActionResult> UpsertServiceItem([FromBody] BossServiceUpsertDto dto, CancellationToken ct)
+        {
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
+
+            var item = new ItemPriceRangeDto
+            {
+                ItemId = dto.ItemId,
+                MinPrice = dto.MinPrice,
+                MaxPrice = dto.MaxPrice,
+                IsActive = dto.IsActive
+            };
+
+            await _bossInfoRepo.UpsertItemAsync(uow.Connection, uow.Transaction, dto.UserId, item, ct);
+
+            await uow.CommitAsync();   // ⬅ 一定要有這行
+
+            return NoContent();
+
+        }
+
+        [HttpPost("store/deleteServierItem")]
+        public async Task<IActionResult> deleteServiceItem([FromBody] DeleteServiceItemDto dto, CancellationToken ct)
+        {
+            await using var uow = await _uowFactory.BeginAsync(withTransaction: true, ct);
+
+            await _bossInfoRepo.DeleteItemAsync(uow.Connection, uow.Transaction, dto.UserId, dto.ItemId, ct);
+
+            await uow.CommitAsync();   // ⬅ 一定要有這行
+
+            return NoContent();
+
+        }
+
     }
 }

@@ -30,10 +30,10 @@
             <div class="modal-body">
                 <!-- Step 1 -->
                 <div id="step1">
-                    <h4 class="mb-3">Step 1：選擇服務分類 / 中分類 / 項目</h4>
+                    <h4 class="mb-3">Step 1：選擇服務項目</h4>@* 選擇服務分類 / 中分類 / 項目 *@
                     <div class="row g-3">
-                        <div class="col-12 col-md-4"><div id="catList" class="list-group"></div></div>
-                        <div class="col-12 col-md-4"><div id="subcatList" class="list-group"></div></div>
+                        @* <div class="col-12 col-md-4"><div id="catList" class="list-group"></div></div> *@
+                        @* <div class="col-12 col-md-4"><div id="subcatList" class="list-group"></div></div> *@
                         <div class="col-12 col-md-4"><div id="itemList" class="list-group"></div></div>
                     </div>
                     <div class="mt-3 text-end">
@@ -97,71 +97,116 @@
             toggle(document.getElementById('step3'), false);
 
             document.getElementById('toStep2').disabled = true;
-            document.getElementById('catList').innerHTML    = '<div class="text-muted px-2">載入中…</div>';
-            document.getElementById('subcatList').innerHTML = '<div class="text-muted px-2">請先選擇大分類</div>';
-            document.getElementById('itemList').innerHTML   = '<div class="text-muted px-2">請先選擇中分類</div>';
+            // document.getElementById('catList').innerHTML    = '<div class="text-muted px-2">載入中…</div>';
+            // document.getElementById('subcatList').innerHTML = '<div class="text-muted px-2">請先選擇大分類</div>';
+            // document.getElementById('itemList').innerHTML   = '<div class="text-muted px-2">請先選擇中分類</div>';
+            document.getElementById('itemList').innerHTML = '<div class="text-muted px-2">載入中…</div>';
             const pm = document.getElementById('priceMin'), px = document.getElementById('priceMax');
             if(pm) pm.value = ''; if(px) px.value = '';
             ['m1','m2','m3'].forEach(id => { const el=document.getElementById(id); if(el) el.checked=false; });
           }
 
           function initQuestionnaire(){
-            let categories=[], selectedCat=null, selectedSubcat=null, selectedItemId=null;
-
-            fetch(`${API_BASE}/api/ServicesItem/categories`)
+            // [Modify][20260215] 改為只需要 allItems
+            // let categories=[], selectedCat=null, selectedSubcat=null, selectedItemId=null;
+            let categories=[], allItems=[], selectedItemId=null;
+            
+            // [Modify][20260215] 將三層 items 全部攤平成一個陣列
+            // fetch(`${API_BASE}/api/ServicesItem/categories`)
+            //   .then(r => r.json())
+            //   .then(cats => { categories = cats || []; renderCats(); })
+            //   .catch(() => document.getElementById('catList').innerHTML = '<div class="text-danger px-2">載入失敗</div>');
+            fetch(`${API}/api/ServicesItem/categories`)
               .then(r => r.json())
-              .then(cats => { categories = cats || []; renderCats(); })
-              .catch(() => document.getElementById('catList').innerHTML = '<div class="text-danger px-2">載入失敗</div>');
+              .then(cats => {
+                  categories = cats || [];
+                  allItems = categories.flatMap(c =>
+                    (c.subcategories || []).flatMap(s =>
+                      s.items || []
+                    )
+                  );
 
-            function renderCats(){
-              const list = document.getElementById('catList');
-              if (!categories.length) { list.innerHTML = '<div class="text-muted px-2">目前尚無分類</div>'; return; }
-              list.innerHTML = categories.map(c => `
-                <button type="button"
-                  class="list-group-item list-group-item-action ${selectedCat?.categoryId===c.categoryId?'active':''}"
-                  data-id="${c.categoryId}">${escapeHtml(c.name)}</button>
-              `).join('');
-              list.querySelectorAll('button').forEach(btn => {
-                btn.onclick = () => {
-                  selectedCat = categories.find(c => c.categoryId === btn.dataset.id);
-                  selectedSubcat = null; selectedItemId = null;
-                  renderCats(); renderSubcats(); renderItems();
-                  document.getElementById('toStep2').disabled = true;
-                };
-              });
-            }
+                  renderItems(); // 直接渲染 items
+                })
+              .catch(() => document.getElementById('itemList').innerHTML = '<div class="text-danger px-2">載入失敗</div>');
 
-            function renderSubcats(){
-              const list = document.getElementById('subcatList');
-              if (!selectedCat) { list.innerHTML = '<div class="text-muted px-2">請先選擇大分類</div>'; return; }
-              const subs = selectedCat.subcategories || [];
-              if (!subs.length) { list.innerHTML = '<div class="text-muted px-2">此分類尚無中分類</div>'; return; }
-              list.innerHTML = subs.map(s => `
-                <button type="button"
-                  class="list-group-item list-group-item-action ${selectedSubcat?.subcategoryId===s.subcategoryId?'active':''}"
-                  data-id="${s.subcategoryId}">${escapeHtml(s.name)}</button>
-              `).join('');
-              list.querySelectorAll('button').forEach(btn => {
-                btn.onclick = () => {
-                  selectedSubcat = (selectedCat.subcategories||[]).find(s => s.subcategoryId === btn.dataset.id);
-                  selectedItemId = null;
-                  renderSubcats(); renderItems();
-                  document.getElementById('toStep2').disabled = true;
-                };
-              });
-            }
+            // function renderCats(){
+            //   const list = document.getElementById('catList');
+            //   if (!categories.length) { list.innerHTML = '<div class="text-muted px-2">目前尚無分類</div>'; return; }
+            //   list.innerHTML = categories.map(c => `
+            //     <button type="button"
+            //       class="list-group-item list-group-item-action ${selectedCat?.categoryId===c.categoryId?'active':''}"
+            //       data-id="${c.categoryId}">${escapeHtml(c.name)}</button>
+            //   `).join('');
+            //   list.querySelectorAll('button').forEach(btn => {
+            //     btn.onclick = () => {
+            //       selectedCat = categories.find(c => c.categoryId === btn.dataset.id);
+            //       selectedSubcat = null; selectedItemId = null;
+            //       renderCats(); renderSubcats(); renderItems();
+            //       document.getElementById('toStep2').disabled = true;
+            //     };
+            //   });
+            // }
 
+            // function renderSubcats(){
+            //   const list = document.getElementById('subcatList');
+            //   if (!selectedCat) { list.innerHTML = '<div class="text-muted px-2">請先選擇大分類</div>'; return; }
+            //   const subs = selectedCat.subcategories || [];
+            //   if (!subs.length) { list.innerHTML = '<div class="text-muted px-2">此分類尚無中分類</div>'; return; }
+            //   list.innerHTML = subs.map(s => `
+            //     <button type="button"
+            //       class="list-group-item list-group-item-action ${selectedSubcat?.subcategoryId===s.subcategoryId?'active':''}"
+            //       data-id="${s.subcategoryId}">${escapeHtml(s.name)}</button>
+            //   `).join('');
+            //   list.querySelectorAll('button').forEach(btn => {
+            //     btn.onclick = () => {
+            //       selectedSubcat = (selectedCat.subcategories||[]).find(s => s.subcategoryId === btn.dataset.id);
+            //       selectedItemId = null;
+            //       renderSubcats(); renderItems();
+            //       document.getElementById('toStep2').disabled = true;
+            //     };
+            //   });
+            // }
+
+            // function renderItems(){
+            //   const list = document.getElementById('itemList');
+            //   if (!selectedSubcat) { list.innerHTML = '<div class="text-muted px-2">請先選擇中分類</div>'; return; }
+            //   const items = selectedSubcat.items || [];
+            //   if (!items.length) { list.innerHTML = '<div class="text-muted px-2">此中分類尚無項目</div>'; return; }
+            //   list.innerHTML = items.map(i => `
+            //     <label class="list-group-item d-flex align-items-center">
+            //       <input class="form-check-input me-2" type="radio" name="serviceItem" value="${i.itemUuid}">
+            //       <span>${escapeHtml(i.name)}</span>
+            //     </label>
+            //   `).join('');
+            //   list.querySelectorAll('input[name=serviceItem]').forEach(r => {
+            //     r.onchange = () => {
+            //       selectedItemId = r.value;
+            //       document.getElementById('toStep2').disabled = !selectedItemId;
+            //     };
+            //   });
+            // }
+
+            // [Modify][20260215] 不依賴 subcategory
             function renderItems(){
               const list = document.getElementById('itemList');
-              if (!selectedSubcat) { list.innerHTML = '<div class="text-muted px-2">請先選擇中分類</div>'; return; }
-              const items = selectedSubcat.items || [];
-              if (!items.length) { list.innerHTML = '<div class="text-muted px-2">此中分類尚無項目</div>'; return; }
-              list.innerHTML = items.map(i => `
+
+              // 直接用攤平後的 allItems
+              if (!allItems.length) {
+                list.innerHTML = '<div class="text-muted px-2">目前尚無項目</div>';
+                return;
+              }
+
+              list.innerHTML = allItems.map(i => `
                 <label class="list-group-item d-flex align-items-center">
-                  <input class="form-check-input me-2" type="radio" name="serviceItem" value="${i.itemUuid}">
+                  <input class="form-check-input me-2"
+                         type="radio"
+                         name="serviceItem"
+                         value="${i.itemUuid}">
                   <span>${escapeHtml(i.name)}</span>
                 </label>
               `).join('');
+
               list.querySelectorAll('input[name=serviceItem]').forEach(r => {
                 r.onchange = () => {
                   selectedItemId = r.value;
@@ -197,7 +242,7 @@
                 methods
               };
        
-              fetch(`${API_BASE}/api/CustomerServiceQuestionnaire/${USERID}`, {
+              fetch(`${API}/api/CustomerServiceQuestionnaire/${USERID}`, {
                 method: 'POST',
                 headers: { 'Content-Type':'application/json' },
                 body: JSON.stringify(dto)

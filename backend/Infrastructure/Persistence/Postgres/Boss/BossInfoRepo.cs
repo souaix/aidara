@@ -120,19 +120,32 @@ public sealed class BossInfoRepo : IBossInfoRepo
         Guid userId, ItemPriceRangeDto item, CancellationToken ct)
     {
         const string sql = """
-        INSERT INTO boss_service_item (id, user_id, item_id, min_price, max_price, created_at)
-        VALUES (gen_random_uuid(), @UserId, @ItemId, @MinPrice, @MaxPrice, now())
+        INSERT INTO boss_service_item (id, user_id, item_id, min_price, max_price, created_at, is_active)
+        VALUES (gen_random_uuid(), @UserId, @ItemId, @MinPrice, @MaxPrice, now(), @IsActive)
         ON CONFLICT (user_id, item_id)
         DO UPDATE SET 
             min_price = EXCLUDED.min_price,
-            max_price = EXCLUDED.max_price;
+            max_price = EXCLUDED.max_price,
+            is_active = EXCLUDED.is_active;
     """;
 
         await conn.ExecuteAsync(new CommandDefinition(
             sql,
-            new { UserId = userId, item.ItemId, item.MinPrice, item.MaxPrice },
+            new { UserId = userId, item.ItemId, item.MinPrice, item.MaxPrice, item.IsActive },
             tx,
             cancellationToken: ct));
+    }
+
+    public async Task DeleteItemAsync(
+    IDbConnection conn, IDbTransaction? tx,
+    Guid userId, string itemId, CancellationToken ct)
+    {
+        await conn.ExecuteAsync(
+            new CommandDefinition(
+                "DELETE FROM boss_service_item WHERE user_id = @userId AND item_id = @itemId", 
+                new { userId, itemId }, 
+                tx, 
+                cancellationToken: ct));
     }
 
     public async Task ReplaceAreasForItemAsync(

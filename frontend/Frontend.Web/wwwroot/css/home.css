@@ -228,3 +228,7 @@ body {
 .avatar-wrapper:hover .avatar-edit-btn {
     opacity: 1;
 }
+
+/*.btn-close:hover {
+    filter: brightness(0) saturate(100%) invert(19%) sepia(99%) saturate(7470%) hue-rotate(357deg) brightness(97%) contrast(113%);
+}*/
